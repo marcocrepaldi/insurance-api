@@ -14,7 +14,7 @@ import * as bcrypt from 'bcrypt';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string; // UUID para identificação única
+  id: string;
 
   @Column({ length: 100, nullable: false })
   name: string;
@@ -22,16 +22,16 @@ export class User {
   @Column({ unique: true, length: 150, nullable: false })
   email: string;
 
-  @Column({ select: false, nullable: false }) // Senha nunca é retornada nas queries
+  @Column({ select: false, nullable: false })
   password: string;
 
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
   role: Role;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' }) // Define o nome correto da coluna
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ name: 'updated_at' }) // Define o nome correto da coluna
   updatedAt: Date;
 
   @BeforeInsert()
@@ -42,7 +42,7 @@ export class User {
   @BeforeUpdate()
   async hashPasswordBeforeUpdate() {
     if (this.password) {
-      const isHashed = this.password.startsWith('$2b$'); // Verifica se a senha já está hasheada
+      const isHashed = this.password.startsWith('$2b$');
       if (!isHashed) {
         await this.hashPassword();
       }
