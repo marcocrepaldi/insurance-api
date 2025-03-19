@@ -1,57 +1,58 @@
-import { MigrationInterface, QueryRunner, Table } from 'typeorm';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  ManyToOne,
+  BeforeInsert,
+  BeforeUpdate,
+  JoinColumn,
+} from 'typeorm';
+import { Role } from '../../roles/entities/role.entity';
+import * as bcrypt from 'bcrypt';
 
-export class CreateTableUser1742361893575 implements MigrationInterface {
-  public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.createTable(
-      new Table({
-        name: 'users',
-        columns: [
-          {
-            name: 'id',
-            type: 'uuid',
-            isPrimary: true,
-            generationStrategy: 'uuid',
-            default: 'uuid_generate_v4()',
-          },
-          {
-            name: 'name',
-            type: 'varchar',
-            length: '100',
-            isNullable: false,
-          },
-          {
-            name: 'email',
-            type: 'varchar',
-            length: '150',
-            isUnique: true,
-            isNullable: false,
-          },
-          {
-            name: 'password',
-            type: 'varchar',
-            isNullable: false,
-          },
-          {
-            name: 'role',
-            type: 'varchar',
-            default: "'user'",
-          },
-          {
-            name: 'created_at',
-            type: 'timestamp',
-            default: 'now()',
-          },
-          {
-            name: 'updated_at',
-            type: 'timestamp',
-            default: 'now()',
-          },
-        ],
-      }),
-    );
+@Entity('users')
+export class User {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ length: 100, nullable: false })
+  name: string;
+
+  @Column({ unique: true, length: 150, nullable: false })
+  email: string;
+
+  @Column({ select: false, nullable: false })
+  password: string;
+
+  @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'role_id' }) // Corrigido para "role_id" (FK correta)
+  role: Role;
+
+  @CreateDateColumn({ name: 'created_at' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at' })
+  updatedAt: Date;
+
+  @BeforeInsert()
+  async hashPasswordBeforeInsert() {
+    await this.hashPassword();
   }
 
-  public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.dropTable('users');
+  @BeforeUpdate()
+  async hashPasswordBeforeUpdate() {
+    if (this.password) {
+      const isHashed = this.password.startsWith('$2b$');
+      if (!isHashed) {
+        await this.hashPassword();
+      }
+    }
+  }
+
+  private async hashPassword() {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
   }
 }

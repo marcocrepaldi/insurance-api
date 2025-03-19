@@ -10,6 +10,7 @@ import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RefreshToken } from '../entities/refresh-token.entity';
+import { User } from '../../users/entities/user.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -22,19 +23,30 @@ export class AuthService {
     private readonly refreshTokenRepository: Repository<RefreshToken>,
   ) {}
 
+  /**
+   * Registra um novo usuário.
+   */
   async register(registerDto: RegisterDto) {
+    console.log(`🔍 Tentando registrar o usuário: ${registerDto.email}`);
+
     const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
+      console.log('❌ E-mail já cadastrado.');
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    return await this.usersService.create(registerDto);
+    const newUser = await this.usersService.create(registerDto);
+    console.log(`✅ Usuário ${newUser.email} registrado com sucesso.`);
+    return newUser;
   }
 
+  /**
+   * Valida o usuário durante o login.
+   */
   async validateUser(email: string, password: string) {
     console.log(`🔍 Buscando usuário com email: ${email}`);
     
-    const user = await this.usersService.findByEmail(email, true); // Agora carrega a senha
+    const user = await this.usersService.findByEmail(email, true); // Carrega a senha para validação
 
     if (!user) {
       console.log('❌ Usuário não encontrado.');
@@ -63,12 +75,15 @@ export class AuthService {
     return user;
   }
 
-  async login(user: any) {
+  /**
+   * Gera o token JWT e Refresh Token ao logar.
+   */
+  async login(user: User) {
     console.log(`🔐 Gerando tokens para o usuário: ${user.email}`);
 
     const payload = { id: user.id, email: user.email, role: user.role?.name };
     const accessToken = this.jwtService.sign(payload);
-    const refreshToken = await this.generateRefreshToken(user.id);
+    const refreshToken = await this.generateRefreshToken(user);
 
     console.log('✅ Tokens gerados com sucesso.');
 
@@ -80,31 +95,40 @@ export class AuthService {
     };
   }
 
-  async generateRefreshToken(userId: string) {
-    console.log(`🔄 Criando Refresh Token para o usuário ID: ${userId}`);
+  /**
+   * Gera um novo Refresh Token e salva no banco.
+   */
+  async generateRefreshToken(user: User) {
+    console.log(`🔄 Criando Refresh Token para o usuário ID: ${user.id}`);
 
-    const token = this.jwtService.sign({ userId }, { expiresIn: '7d' });
+    const token = this.jwtService.sign({ userId: user.id }, { expiresIn: '7d' });
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     const refreshToken = this.refreshTokenRepository.create({
       token,
-      user: { id: userId },
+      user: user, // Passa o objeto User corretamente
       expiresAt,
     });
+
+    console.log(`🛠 Salvando Refresh Token no banco para user_id: ${user.id}`);
+
     await this.refreshTokenRepository.save(refreshToken);
 
-    console.log('✅ Refresh Token salvo no banco.');
-
+    console.log('✅Refresh Token salvo no banco.');
     return token;
   }
 
+  /**
+   * Valida e renova o Refresh Token.
+   */
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
     console.log(`🔄 Tentando validar Refresh Token: ${refreshTokenDto.refreshToken}`);
 
     const storedToken = await this.refreshTokenRepository.findOne({
       where: { token: refreshTokenDto.refreshToken },
+      relations: ['user'], // Certifica-se de carregar o usuário relacionado
     });
 
     if (!storedToken || storedToken.expiresAt < new Date()) {
