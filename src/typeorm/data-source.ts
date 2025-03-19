@@ -3,19 +3,16 @@ import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
 import path from "path";
 
-dotenv.config(); // Carrega variáveis de ambiente
+dotenv.config(); // 🚀 Carrega as variáveis de ambiente do .env
 
 export const AppDataSource = new DataSource({
   type: "postgres",
-  host: process.env.DB_HOST,
-  port: Number(process.env.DB_PORT) || 5432,
-  username: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  entities: [path.join(__dirname, "../**/*.entity{.ts,.js}")], // ✅ Correção para CommonJS
-  migrations: [path.join(__dirname, "./migrations/*{.ts,.js}")], // ✅ Correção para CommonJS
-  synchronize: false,
-  logging: true,
+  url: process.env.DATABASE_URL, // ✅ Usa a URL completa do Railway
+  ssl: { rejectUnauthorized: false }, // 🔒 Necessário para conexões externas
+  entities: ["dist/**/*.entity.js"], // Aponta para os arquivos compilados
+  migrations: ["dist/typeorm/migrations/*.js"], // Caminho correto das migrations
+  synchronize: false, // ⚠️ Nunca use "true" em produção
+  logging: true, // Ativa logs do banco
 });
 
 AppDataSource.initialize()
@@ -24,5 +21,3 @@ AppDataSource.initialize()
     console.error("❌ Erro ao conectar ao banco:", err.message);
     process.exit(1);
   });
-
-export default AppDataSource;
