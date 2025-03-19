@@ -1,10 +1,5 @@
-// src/auth/entities/refresh-token.entity.ts
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  ManyToOne,
+import { 
+  Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn 
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
@@ -16,12 +11,12 @@ export class RefreshToken {
   @Column()
   token: string;
 
-  @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
-  user: User;
-
-  @CreateDateColumn()
+  @CreateDateColumn({ name: 'created_at' }) // Corrigido para snake_case
   createdAt: Date;
 
-  @Column({ type: 'timestamp', nullable: false })
+  @Column({ name: 'expires_at' }) // Corrigido para snake_case
   expiresAt: Date;
+
+  @ManyToOne(() => User, (user) => user.id, { onDelete: 'CASCADE' })
+  user: User;
 }
