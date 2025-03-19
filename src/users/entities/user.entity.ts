@@ -7,13 +7,13 @@ import {
   ManyToOne,
   BeforeInsert,
   BeforeUpdate,
-} from "typeorm";
-import { Role } from "../../roles/entities/role.entity";
-import * as bcrypt from "bcrypt";
+} from 'typeorm';
+import { Role } from '../../roles/entities/role.entity';
+import * as bcrypt from 'bcrypt';
 
-@Entity("users")
+@Entity('users')
 export class User {
-  @PrimaryGeneratedColumn("uuid")
+  @PrimaryGeneratedColumn('uuid')
   id: string; // UUID para identificação única
 
   @Column({ length: 100, nullable: false })
@@ -25,7 +25,7 @@ export class User {
   @Column({ select: false, nullable: false }) // Senha nunca é retornada nas queries
   password: string;
 
-  @ManyToOne(() => Role, (role) => role.users, { onDelete: "SET NULL" })
+  @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
   role: Role;
 
   @CreateDateColumn()
@@ -42,7 +42,7 @@ export class User {
   @BeforeUpdate()
   async hashPasswordBeforeUpdate() {
     if (this.password) {
-      const isHashed = this.password.startsWith("$2b$"); // Verifica se a senha já está hasheada
+      const isHashed = this.password.startsWith('$2b$'); // Verifica se a senha já está hasheada
       if (!isHashed) {
         await this.hashPassword();
       }
