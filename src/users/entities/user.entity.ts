@@ -7,6 +7,7 @@ import {
   ManyToOne,
   BeforeInsert,
   BeforeUpdate,
+  JoinColumn,
 } from 'typeorm';
 import { Role } from '../../roles/entities/role.entity';
 import * as bcrypt from 'bcrypt';
@@ -26,12 +27,13 @@ export class User {
   password: string;
 
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'role' }) // Define explicitamente o nome da coluna no banco
   role: Role;
 
-  @CreateDateColumn({ name: 'created_at' }) // Define o nome correto da coluna
+  @CreateDateColumn({ name: 'created_at' }) // Garantir que usa snake_case
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' }) // Define o nome correto da coluna
+  @UpdateDateColumn({ name: 'updated_at' }) // Garantir que usa snake_case
   updatedAt: Date;
 
   @BeforeInsert()
