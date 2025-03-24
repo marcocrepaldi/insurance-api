@@ -2,6 +2,7 @@ import {
   Injectable,
   ConflictException,
   UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -11,6 +12,7 @@ import { RegisterDto } from '../dto/register.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { User } from '../../users/entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
+import { Role } from '../../roles/entities/role.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -21,6 +23,9 @@ export class AuthService {
 
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+
+    @InjectRepository(Role)
+    private readonly rolesRepository: Repository<Role>,
   ) {}
 
   async register(registerDto: RegisterDto) {
@@ -29,7 +34,21 @@ export class AuthService {
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    const newUser = await this.usersService.create(registerDto);
+    const role = await this.rolesRepository.findOne({
+      where: { id: registerDto.roleId },
+    });
+
+    if (!role) {
+      throw new NotFoundException('Role não encontrada.');
+    }
+
+    const { roleId, ...userData } = registerDto;
+
+    const newUser = await this.usersService.create({
+      ...userData,
+      role,
+    } as any);
+
     return newUser;
   }
 
@@ -69,7 +88,7 @@ export class AuthService {
     const tokenHash = await bcrypt.hash(token, 10);
 
     const refreshToken = this.refreshTokenRepository.create({
-      token, // opcional, pode remover depois
+      token, // opcional
       tokenHash,
       user,
       expiresAt,

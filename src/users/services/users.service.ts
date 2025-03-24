@@ -7,7 +7,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Role } from '../../roles/entities/role.entity';
-import { CreateUserDto } from '../dto/create-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -21,29 +20,21 @@ export class UsersService {
     private readonly roleRepository: Repository<Role>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
+  async create(data: Partial<User>): Promise<User> {
     const existingUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
+      where: { email: data.email },
     });
 
     if (existingUser) {
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    const role = await this.roleRepository.findOne({
-      where: { id: createUserDto.roleId },
-    });
-    if (!role) {
-      throw new NotFoundException('Role não encontrada.');
-    }
-
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+    const hashedPassword = await bcrypt.hash(data.password, salt);
 
     const newUser = this.userRepository.create({
-      ...createUserDto,
+      ...data,
       password: hashedPassword,
-      role,
     });
 
     return this.userRepository.save(newUser);
