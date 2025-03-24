@@ -29,14 +29,7 @@ export class UsersService {
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(data.password, salt);
-
-    const newUser = this.userRepository.create({
-      ...data,
-      password: hashedPassword,
-    });
-
+    const newUser = this.userRepository.create(data);
     return this.userRepository.save(newUser);
   }
 
@@ -59,12 +52,7 @@ export class UsersService {
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.findOne(id);
-
-    if (updateUserDto.password) {
-      const salt = await bcrypt.genSalt(10);
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
-    }
-
+  
     if (updateUserDto.roleId) {
       const role = await this.roleRepository.findOne({
         where: { id: updateUserDto.roleId },
@@ -74,11 +62,12 @@ export class UsersService {
       }
       user.role = role;
     }
-
+  
     Object.assign(user, updateUserDto);
     await this.userRepository.save(user);
     return user;
   }
+  
 
   async remove(id: string): Promise<{ message: string }> {
     const user = await this.findOne(id);
