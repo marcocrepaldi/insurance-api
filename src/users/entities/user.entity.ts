@@ -26,14 +26,17 @@ export class User {
   @Column({ select: false, nullable: false })
   password: string;
 
+  @Column({ name: 'role', type: 'uuid', nullable: true })
+  roleId: string; // Esta é a coluna que armazena o UUID
+
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'role' }) // Define explicitamente o nome da coluna no banco
+  @JoinColumn({ name: 'role' }) // Conecta a propriedade role com a coluna roleId
   role: Role;
 
-  @CreateDateColumn({ name: 'created_at' }) // Garantir que usa snake_case
+  @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' }) // Garantir que usa snake_case
+  @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
 
   @BeforeInsert()
