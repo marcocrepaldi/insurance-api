@@ -28,12 +28,9 @@ export class User {
 
   @Column({ name: 'role_id', type: 'uuid', nullable: true })
   roleId: string;
-  
-  @JoinColumn({ name: 'role_id' })
-  
 
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'role' }) // Conecta a propriedade role com a coluna roleId
+  @JoinColumn({ name: 'role_id' }) // ✅ Correto
   role: Role;
 
   @CreateDateColumn({ name: 'created_at' })
@@ -49,11 +46,8 @@ export class User {
 
   @BeforeUpdate()
   async hashPasswordBeforeUpdate() {
-    if (this.password) {
-      const isHashed = this.password.startsWith('$2b$');
-      if (!isHashed) {
-        await this.hashPassword();
-      }
+    if (this.password && !this.password.startsWith('$2b$')) {
+      await this.hashPassword();
     }
   }
 
