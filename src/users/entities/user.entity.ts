@@ -26,8 +26,11 @@ export class User {
   @Column({ select: false, nullable: false })
   password: string;
 
-  @Column({ name: 'role', type: 'uuid', nullable: true })
-  roleId: string; // Esta é a coluna que armazena o UUID
+  @Column({ name: 'role_id', type: 'uuid', nullable: true })
+  roleId: string;
+  
+  @JoinColumn({ name: 'role_id' })
+  
 
   @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
   @JoinColumn({ name: 'role' }) // Conecta a propriedade role com a coluna roleId
