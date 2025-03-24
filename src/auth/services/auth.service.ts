@@ -66,8 +66,11 @@ export class AuthService {
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
+    const tokenHash = await bcrypt.hash(token, 10);
+
     const refreshToken = this.refreshTokenRepository.create({
-      token,
+      token, // opcional, pode remover depois
+      tokenHash,
       user,
       expiresAt,
     });
@@ -77,15 +80,24 @@ export class AuthService {
   }
 
   async refreshToken(refreshTokenDto: RefreshTokenDto) {
-    const storedToken = await this.refreshTokenRepository.findOne({
-      where: { token: refreshTokenDto.refreshToken },
+    const storedTokens = await this.refreshTokenRepository.find({
       relations: ['user'],
     });
 
-    if (!storedToken || storedToken.expiresAt < new Date()) {
+    const matchingToken = await Promise.any(
+      storedTokens.map(async (stored) => {
+        const match = await bcrypt.compare(
+          refreshTokenDto.refreshToken,
+          stored.tokenHash,
+        );
+        return match ? stored : null;
+      }),
+    ).catch(() => null);
+
+    if (!matchingToken || matchingToken.expiresAt < new Date()) {
       throw new UnauthorizedException('Token inválido ou expirado.');
     }
 
-    return this.login(storedToken.user);
+    return this.login(matchingToken.user);
   }
 }

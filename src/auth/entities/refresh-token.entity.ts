@@ -13,8 +13,13 @@ export class RefreshToken {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column()
-  token: string;
+  // 🔐 Campo opcional: armazenar o token original (recomendado deixar nullable e select: false em produção)
+  @Column({ nullable: true, select: false })
+  token?: string;
+
+  // ✅ Novo campo para armazenar o hash do token
+  @Column({ name: 'token_hash' })
+  tokenHash: string;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
@@ -23,6 +28,6 @@ export class RefreshToken {
   expiresAt: Date;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' }) // Garante que está mapeando corretamente
+  @JoinColumn({ name: 'user_id' })
   user: User;
 }
