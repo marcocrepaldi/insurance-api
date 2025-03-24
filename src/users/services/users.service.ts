@@ -43,6 +43,7 @@ export class UsersService {
     const newUser = this.userRepository.create({
       ...createUserDto,
       password: hashedPassword,
+      role,
     });
 
     return this.userRepository.save(newUser);
@@ -63,21 +64,6 @@ export class UsersService {
     }
 
     return user;
-  }
-
-  async findByEmail(
-    email: string,
-    includePassword = false,
-  ): Promise<User | null> {
-    const query = this.userRepository
-      .createQueryBuilder('user')
-      .where('user.email = :email', { email });
-
-    if (includePassword) {
-      query.addSelect('user.password');
-    }
-
-    return query.getOne();
   }
 
   async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
@@ -107,5 +93,20 @@ export class UsersService {
     const user = await this.findOne(id);
     await this.userRepository.remove(user);
     return { message: 'Usuário removido com sucesso.' };
+  }
+
+  async findByEmail(email: string, withPassword = false): Promise<User | null> {
+    if (withPassword) {
+      return this.userRepository.findOne({
+        where: { email },
+        select: ['id', 'name', 'email', 'password'],
+        relations: ['role'],
+      });
+    }
+
+    return this.userRepository.findOne({
+      where: { email },
+      relations: ['role'],
+    });
   }
 }

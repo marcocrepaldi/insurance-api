@@ -1,112 +1,91 @@
 import {
   Injectable,
-  NotFoundException,
   ConflictException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { UsersService } from '../../users/services/users.service';
+import { RegisterDto } from '../dto/register.dto';
+import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { User } from '../../users/entities/user.entity';
-import { Role } from '../../roles/entities/role.entity';
-import { CreateUserDto } from '../../users/dto/create-user.dto';
-import { UpdateUserDto } from '../../users/dto/update-user.dto';
+import { RefreshToken } from '../entities/refresh-token.entity';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class UsersService {
+export class AuthService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
+    private readonly usersService: UsersService,
+    private readonly jwtService: JwtService,
 
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
+    @InjectRepository(RefreshToken)
+    private readonly refreshTokenRepository: Repository<RefreshToken>,
   ) {}
 
-  async create(createUserDto: CreateUserDto): Promise<User> {
-    const existingUser = await this.userRepository.findOne({
-      where: { email: createUserDto.email },
-    });
-
+  async register(registerDto: RegisterDto) {
+    const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    const role = await this.roleRepository.findOne({
-      where: { id: createUserDto.roleId },
-    });
-    if (!role) {
-      throw new NotFoundException('Role não encontrada.');
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
-
-    const newUser = this.userRepository.create({
-      ...createUserDto,
-      password: hashedPassword,
-      role,
-    });
-
-    return this.userRepository.save(newUser);
+    const newUser = await this.usersService.create(registerDto);
+    return newUser;
   }
 
-  async findAll(): Promise<User[]> {
-    return this.userRepository.find({ relations: ['role'] });
-  }
-
-  async findOne(id: string): Promise<User> {
-    const user = await this.userRepository.findOne({
-      where: { id },
-      relations: ['role'],
-    });
-
-    if (!user) {
-      throw new NotFoundException('Usuário não encontrado.');
+  async validateUser(email: string, password: string) {
+    const user = await this.usersService.findByEmail(email, true);
+    if (!user || !user.password) {
+      throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-   return user;
-  }
-
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
-    const user = await this.findOne(id);
-
-    if (updateUserDto.password) {
-      const salt = await bcrypt.genSalt(10);
-      updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Credenciais inválidas.');
     }
 
-    if (updateUserDto.roleId) {
-      const role = await this.roleRepository.findOne({
-        where: { id: updateUserDto.roleId },
-      });
-      if (!role) {
-        throw new NotFoundException('Role não encontrada.');
-      }
-      user.role = role;
-    }
-
-    Object.assign(user, updateUserDto);
-    await this.userRepository.save(user);
     return user;
   }
 
-  async remove(id: string): Promise<{ message: string }> {
-    const user = await this.findOne(id);
-    await this.userRepository.remove(user);
-    return { message: 'Usuário removido com sucesso.' };
+  async login(user: User) {
+    const payload = { id: user.id, email: user.email, role: user.role?.name };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = await this.generateRefreshToken(user);
+
+    return {
+      accessToken,
+      refreshToken,
+      userId: user.id,
+      role: user.role?.name,
+    };
   }
 
-  async findByEmail(email: string, withPassword = false): Promise<User | null> {
-    if (withPassword) {
-      return this.userRepository.findOne({
-        where: { email },
-        select: ['id', 'name', 'email', 'password'],
-        relations: ['role'],
-      });
+  async generateRefreshToken(user: User) {
+    const token = this.jwtService.sign({ userId: user.id }, { expiresIn: '7d' });
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    const refreshToken = this.refreshTokenRepository.create({
+      token,
+      user,
+      expiresAt,
+    });
+
+    await this.refreshTokenRepository.save(refreshToken);
+    return token;
+  }
+
+  async refreshToken(refreshTokenDto: RefreshTokenDto) {
+    const storedToken = await this.refreshTokenRepository.findOne({
+      where: { token: refreshTokenDto.refreshToken },
+      relations: ['user'],
+    });
+
+    if (!storedToken || storedToken.expiresAt < new Date()) {
+      throw new UnauthorizedException('Token inválido ou expirado.');
     }
 
-    return this.userRepository.findOne({
-      where: { email },
-      relations: ['role'],
-    });
+    return this.login(storedToken.user);
   }
 }
