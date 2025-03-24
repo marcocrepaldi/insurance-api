@@ -1,142 +1,112 @@
 import {
   Injectable,
+  NotFoundException,
   ConflictException,
-  UnauthorizedException,
 } from '@nestjs/common';
-import { UsersService } from '../../users/services/users.service';
-import { JwtService } from '@nestjs/jwt';
-import { RegisterDto } from '../dto/register.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { RefreshToken } from '../entities/refresh-token.entity';
 import { User } from '../../users/entities/user.entity';
+import { Role } from '../../roles/entities/role.entity';
+import { CreateUserDto } from '../../users/dto/create-user.dto';
+import { UpdateUserDto } from '../../users/dto/update-user.dto';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
-export class AuthService {
+export class UsersService {
   constructor(
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
 
-    @InjectRepository(RefreshToken)
-    private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(Role)
+    private readonly roleRepository: Repository<Role>,
   ) {}
 
-  /**
-   * Registra um novo usuário.
-   */
-  async register(registerDto: RegisterDto) {
-    console.log(`🔍 Tentando registrar o usuário: ${registerDto.email}`);
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    const existingUser = await this.userRepository.findOne({
+      where: { email: createUserDto.email },
+    });
 
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
     if (existingUser) {
-      console.log('❌ E-mail já cadastrado.');
       throw new ConflictException('E-mail já cadastrado.');
     }
 
-    const newUser = await this.usersService.create(registerDto);
-    console.log(`✅ Usuário ${newUser.email} registrado com sucesso.`);
-    return newUser;
+    const role = await this.roleRepository.findOne({
+      where: { id: createUserDto.roleId },
+    });
+    if (!role) {
+      throw new NotFoundException('Role não encontrada.');
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(createUserDto.password, salt);
+
+    const newUser = this.userRepository.create({
+      ...createUserDto,
+      password: hashedPassword,
+      role,
+    });
+
+    return this.userRepository.save(newUser);
   }
 
-  /**
-   * Valida o usuário durante o login.
-   */
-  async validateUser(email: string, password: string) {
-    console.log(`🔍 Buscando usuário com email: ${email}`);
-    
-    const user = await this.usersService.findByEmail(email, true); // Carrega a senha para validação
+  async findAll(): Promise<User[]> {
+    return this.userRepository.find({ relations: ['role'] });
+  }
+
+  async findOne(id: string): Promise<User> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ['role'],
+    });
 
     if (!user) {
-      console.log('❌ Usuário não encontrado.');
-      throw new UnauthorizedException('Credenciais inválidas.');
+      throw new NotFoundException('Usuário não encontrado.');
     }
 
-    console.log(`✅ Usuário encontrado: ${user.email}`);
-    console.log(`🔑 Senha armazenada no banco: ${user.password}`);
+   return user;
+  }
 
-    if (!user.password) {
-      console.log('❌ Senha não encontrada no banco.');
-      throw new UnauthorizedException('Credenciais inválidas.');
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    const user = await this.findOne(id);
+
+    if (updateUserDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateUserDto.password = await bcrypt.hash(updateUserDto.password, salt);
     }
 
-    console.log(`🔄 Comparando senha digitada: ${password}`);
-    
-    const isMatch = await bcrypt.compare(password, user.password);
-
-    if (!isMatch) {
-      console.log('❌ Senha inválida.');
-      throw new UnauthorizedException('Credenciais inválidas.');
+    if (updateUserDto.roleId) {
+      const role = await this.roleRepository.findOne({
+        where: { id: updateUserDto.roleId },
+      });
+      if (!role) {
+        throw new NotFoundException('Role não encontrada.');
+      }
+      user.role = role;
     }
 
-    console.log('✅ Senha válida! Login autorizado.');
-
+    Object.assign(user, updateUserDto);
+    await this.userRepository.save(user);
     return user;
   }
 
-  /**
-   * Gera o token JWT e Refresh Token ao logar.
-   */
-  async login(user: User) {
-    console.log(`🔐 Gerando tokens para o usuário: ${user.email}`);
-
-    const payload = { id: user.id, email: user.email, role: user.role?.name };
-    const accessToken = this.jwtService.sign(payload);
-    const refreshToken = await this.generateRefreshToken(user);
-
-    console.log('✅ Tokens gerados com sucesso.');
-
-    return {
-      accessToken,
-      refreshToken,
-      userId: user.id,
-      role: user.role?.name,
-    };
+  async remove(id: string): Promise<{ message: string }> {
+    const user = await this.findOne(id);
+    await this.userRepository.remove(user);
+    return { message: 'Usuário removido com sucesso.' };
   }
 
-  /**
-   * Gera um novo Refresh Token e salva no banco.
-   */
-  async generateRefreshToken(user: User) {
-    console.log(`🔄 Criando Refresh Token para o usuário ID: ${user.id}`);
-
-    const token = this.jwtService.sign({ userId: user.id }, { expiresIn: '7d' });
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    const refreshToken = this.refreshTokenRepository.create({
-      token,
-      user: user, // Passa o objeto User corretamente
-      expiresAt,
-    });
-
-    console.log(`🛠 Salvando Refresh Token no banco para user_id: ${user.id}`);
-
-    await this.refreshTokenRepository.save(refreshToken);
-
-    console.log('✅Refresh Token salvo no banco.');
-    return token;
-  }
-
-  /**
-   * Valida e renova o Refresh Token.
-   */
-  async refreshToken(refreshTokenDto: RefreshTokenDto) {
-    console.log(`🔄 Tentando validar Refresh Token: ${refreshTokenDto.refreshToken}`);
-
-    const storedToken = await this.refreshTokenRepository.findOne({
-      where: { token: refreshTokenDto.refreshToken },
-      relations: ['user'], // Certifica-se de carregar o usuário relacionado
-    });
-
-    if (!storedToken || storedToken.expiresAt < new Date()) {
-      console.log('❌ Token inválido ou expirado.');
-      throw new UnauthorizedException('Token inválido ou expirado.');
+  async findByEmail(email: string, withPassword = false): Promise<User | null> {
+    if (withPassword) {
+      return this.userRepository.findOne({
+        where: { email },
+        select: ['id', 'name', 'email', 'password'],
+        relations: ['role'],
+      });
     }
 
-    console.log('✅ Refresh Token válido. Gerando novo Access Token.');
-    return this.login(storedToken.user);
+    return this.userRepository.findOne({
+      where: { email },
+      relations: ['role'],
+    });
   }
 }
