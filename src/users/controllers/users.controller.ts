@@ -7,22 +7,24 @@ import {
   Delete,
   Patch,
   UseGuards,
-} from '@nestjs/common';
-import { UsersService } from '../services/users.service';
-import { CreateUserDto } from '../dto/create-user.dto';
-import { UpdateUserDto } from '../dto/update-user.dto';
-import { AuthGuard } from '@nestjs/passport';
+} from '@nestjs/common'
+import { UsersService } from '../services/users.service'
+import { CreateUserDto } from '../dto/create-user.dto'
+import { UpdateUserDto } from '../dto/update-user.dto'
+import { AuthGuard } from '@nestjs/passport'
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiParam,
   ApiBody,
-} from '@nestjs/swagger';
+} from '@nestjs/swagger'
+import { Roles } from '../../decorators/roles.decorator'
+import { RolesGuard } from '../../guards/roles.guard'
 
-@ApiTags('Users') // Agrupa no Swagger
-@UseGuards(AuthGuard('jwt')) // Proteção JWT aplicada ao controller inteiro
+@ApiTags('Users')
 @Controller('users')
+@UseGuards(AuthGuard('jwt'), RolesGuard) // Aplica autenticação + verificação de role
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
@@ -32,30 +34,33 @@ export class UsersController {
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
   @ApiBody({ type: CreateUserDto })
   async create(@Body() createUserDto: CreateUserDto) {
-    return await this.usersService.create(createUserDto);
+    return await this.usersService.create(createUserDto)
   }
 
   @Get()
+  @Roles('Admin')
   @ApiOperation({ summary: 'Listar todos os usuários' })
   @ApiResponse({
     status: 200,
     description: 'Lista de usuários retornada com sucesso',
   })
   async findAll() {
-    return await this.usersService.findAll();
+    return await this.usersService.findAll()
   }
 
   @Get(':id')
+  @Roles('Admin')
   @ApiOperation({ summary: 'Buscar um usuário por ID' })
   @ApiResponse({ status: 200, description: 'Usuário encontrado' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiParam({ name: 'id', description: 'UUID do usuário', type: 'string' })
   async findOne(@Param('id') id: string) {
-    this.validateUUID(id);
-    return await this.usersService.findOne(id);
+    this.validateUUID(id)
+    return await this.usersService.findOne(id)
   }
 
   @Patch(':id')
+  @Roles('Admin')
   @ApiOperation({ summary: 'Atualizar um usuário por ID' })
   @ApiResponse({ status: 200, description: 'Usuário atualizado com sucesso' })
   @ApiResponse({ status: 400, description: 'Dados inválidos' })
@@ -63,26 +68,26 @@ export class UsersController {
   @ApiParam({ name: 'id', description: 'UUID do usuário', type: 'string' })
   @ApiBody({ type: UpdateUserDto })
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    this.validateUUID(id);
-    return await this.usersService.update(id, updateUserDto);
+    this.validateUUID(id)
+    return await this.usersService.update(id, updateUserDto)
   }
 
   @Delete(':id')
+  @Roles('Admin')
   @ApiOperation({ summary: 'Remover um usuário por ID' })
   @ApiResponse({ status: 204, description: 'Usuário removido com sucesso' })
   @ApiResponse({ status: 404, description: 'Usuário não encontrado' })
   @ApiParam({ name: 'id', description: 'UUID do usuário', type: 'string' })
   async remove(@Param('id') id: string) {
-    this.validateUUID(id);
-    return await this.usersService.remove(id);
+    this.validateUUID(id)
+    return await this.usersService.remove(id)
   }
 
-  // Função para validar UUID manualmente
   private validateUUID(id: string) {
     const uuidRegex =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
     if (!uuidRegex.test(id)) {
-      throw new Error('ID inválido. Deve ser um UUID válido.');
+      throw new Error('ID inválido. Deve ser um UUID válido.')
     }
   }
 }
