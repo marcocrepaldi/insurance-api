@@ -24,10 +24,11 @@ export class TasksController {
 
   @Post()
   async create(@Body() dto: CreateTaskDto, @Req() req: Request) {
+    console.log('User logado:', req.user); // <- AQUI
     const user = req.user as User;
     return this.tasksService.create(dto, user);
   }
-
+  
   @Get()
   async findAll(@Req() req: Request) {
     const user = req.user as User;
