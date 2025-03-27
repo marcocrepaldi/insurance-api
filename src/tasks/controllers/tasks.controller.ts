@@ -24,7 +24,6 @@ export class TasksController {
 
   @Post()
   async create(@Body() dto: CreateTaskDto, @Req() req: Request) {
-    console.log('User logado:', req.user); // <- AQUI
     const user = req.user as User;
     return this.tasksService.create(dto, user);
   }
@@ -59,13 +58,22 @@ export class TasksController {
     return this.tasksService.remove(id);
   }
 
-  // (Opcional) Aprovar tarefa com PATCH /tasks/:id/approve
-  // @Patch(':id/approve')
-  // async approve(
-  //   @Param('id', ParseUUIDPipe) id: string,
-  //   @Req() req: Request,
-  // ) {
-  //   const user = req.user as User;
-  //   return this.tasksService.update(id, { status: TaskStatus.APPROVED }, user);
-  // }
+  @Patch(':id/approve')
+  async approve(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return this.tasksService.approve(id, user);
+  }
+  
+  @Patch(':id/reject')
+  async reject(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User;
+    return this.tasksService.reject(id, user);
+  }
+  
 }

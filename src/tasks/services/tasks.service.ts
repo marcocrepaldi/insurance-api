@@ -81,4 +81,36 @@ export class TasksService {
     if (!task) throw new NotFoundException('Tarefa não encontrada');
     await this.taskRepo.delete(id);
   }
+
+  async approve(id: string, user: User): Promise<Task> {
+    const task = await this.findOne(id, user);
+  
+    if (task.status === TaskStatus.APPROVED) {
+      throw new Error('Tarefa já aprovada.');
+    }
+  
+    task.status = TaskStatus.APPROVED;
+    await this.taskRepo.save(task);
+  
+    return this.taskRepo.findOne({
+      where: { id: task.id },
+      relations: ['createdBy', 'assignedTo'],
+    });
+  }
+  
+  async reject(id: string, user: User): Promise<Task> {
+    const task = await this.findOne(id, user);
+  
+    if (task.status === TaskStatus.REJECTED) {
+      throw new Error('Tarefa já rejeitada.');
+    }
+  
+    task.status = TaskStatus.REJECTED;
+    await this.taskRepo.save(task);
+  
+    return this.taskRepo.findOne({
+      where: { id: task.id },
+      relations: ['createdBy', 'assignedTo'],
+    });
+  }
 }
