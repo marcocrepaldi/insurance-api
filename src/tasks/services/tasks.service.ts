@@ -113,4 +113,21 @@ export class TasksService {
       relations: ['createdBy', 'assignedTo'],
     });
   }
-}
+
+  async updateStatus(id: string, status: TaskStatus, user: User): Promise<Task> {
+    const task = await this.findOne(id, user);
+  
+    if (!task) {
+      throw new NotFoundException('Tarefa não encontrada');
+    }
+  
+    task.status = status as TaskStatus;
+  
+    await this.taskRepo.save(task);
+  
+    return this.taskRepo.findOne({
+      where: { id },
+      relations: ['createdBy', 'assignedTo'],
+    });
+  }
+}  

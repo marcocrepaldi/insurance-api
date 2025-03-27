@@ -16,6 +16,8 @@ import { UpdateTaskDto } from '../dto/update-task.dto';
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { User } from '../../users/entities/user.entity';
+import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
+import { TaskStatus } from '../entities/task.entity';
 
 @Controller('tasks')
 @UseGuards(AuthGuard('jwt'))
@@ -27,7 +29,7 @@ export class TasksController {
     const user = req.user as User;
     return this.tasksService.create(dto, user);
   }
-  
+
   @Get()
   async findAll(@Req() req: Request) {
     const user = req.user as User;
@@ -66,7 +68,7 @@ export class TasksController {
     const user = req.user as User;
     return this.tasksService.approve(id, user);
   }
-  
+
   @Patch(':id/reject')
   async reject(
     @Param('id', ParseUUIDPipe) id: string,
@@ -74,6 +76,16 @@ export class TasksController {
   ) {
     const user = req.user as User;
     return this.tasksService.reject(id, user);
+  }
+
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateTaskStatusDto,
+    @Req() req: Request,
+  ) {
+    const user = req.user as User
+    return this.tasksService.updateStatus(id, dto.status as TaskStatus, user)
   }
   
 }
