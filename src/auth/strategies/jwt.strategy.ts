@@ -29,7 +29,13 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!payload || !payload.id) {
       throw new UnauthorizedException('Token inválido.');
     }
-
-    return { userId: payload.id, email: payload.email, role: payload.role };
+  
+    // ✅ Corrigido: retornar como 'id'
+    return {
+      id: payload.id,
+      email: payload.email,
+      role: payload.role,
+    };
   }
+  
 }

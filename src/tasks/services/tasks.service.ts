@@ -24,14 +24,17 @@ export class TasksService {
       createdBy: { id: user.id },
       assignedTo: { id: dto.assignedTo },
     });
-
+  
+    console.log('💡 Task antes do save:', task); // <-- AQUI!
+  
     const saved = await this.taskRepo.save(task);
-
+  
     return this.taskRepo.findOne({
       where: { id: saved.id },
       relations: ['createdBy', 'assignedTo'],
     });
   }
+  
 
   async findAll(user: User): Promise<Task[]> {
     return this.taskRepo.find({
