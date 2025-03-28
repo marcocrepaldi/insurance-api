@@ -55,25 +55,24 @@ export class TasksService {
   }
 
   async findAll(user: User): Promise<Task[]> {
-    const isAdmin = user.role?.name === 'Admin'
-  
-    const where = isAdmin
-      ? {} // Admin vê todas
-      : [
-          { createdBy: { id: user.id } },
-          { assignedTo: { id: user.id } },
-        ]
-  
+    // ✅ Admin pode ver todas
+    if (user.role?.name === 'Admin') {
+      return this.taskRepo.find({
+        relations: ['assignedTo', 'createdBy'],
+        order: { createdAt: 'DESC' },
+      });
+    }
+
+    // Caso contrário, só criadas ou atribuídas a ele
     return this.taskRepo.find({
-      where,
+      where: [
+        { createdBy: { id: user.id } },
+        { assignedTo: { id: user.id } },
+      ],
       relations: ['assignedTo', 'createdBy'],
       order: { createdAt: 'DESC' },
-    })
+    });
   }
-  
-  
-  
-  
 
   async findOne(id: string, user: User): Promise<Task> {
     const task = await this.taskRepo.findOne({
@@ -83,8 +82,11 @@ export class TasksService {
 
     if (!task) throw new NotFoundException('Tarefa não encontrada');
 
+    const isAdmin = user.role?.name === 'Admin';
     const isAuthorized =
-      task.createdBy?.id === user.id || task.assignedTo?.id === user.id;
+      isAdmin ||
+      task.createdBy?.id === user.id ||
+      task.assignedTo?.id === user.id;
 
     if (!isAuthorized) {
       throw new ForbiddenException('Acesso negado a esta tarefa');
@@ -165,31 +167,34 @@ export class TasksService {
       where: { id: taskId },
       relations: ['assignedTo', 'createdBy'],
     });
-  
+
     if (!task) throw new NotFoundException('Tarefa não encontrada');
-  
-    const newUser = await this.userRepo.findOneBy({ id: userId });
+
+    const newUser = await this.userRepo.findOne({
+      where: { id: userId },
+    });
+
     if (!newUser) throw new NotFoundException('Usuário destinatário não encontrado');
-  
-    const previousUser = task.assignedTo;
-  
+
+    const previousAssignee = task.assignedTo?.id;
+
     task.assignedTo = newUser;
     await this.taskRepo.save(task);
-  
+
     await this.historyRepo.save({
       action: 'TRANSFERRED',
-      from: previousUser?.name || null,
-      to: newUser.name,
+      from: previousAssignee || null,
+      to: userId,
       task: { id: taskId },
       changedBy: { id: changedBy.id },
     });
-  
+
     return this.taskRepo.findOne({
       where: { id: taskId },
       relations: ['createdBy', 'assignedTo'],
     });
   }
-  
+
   async getTaskHistory(taskId: string): Promise<TaskHistory[]> {
     return this.historyRepo.find({
       where: { task: { id: taskId } },
