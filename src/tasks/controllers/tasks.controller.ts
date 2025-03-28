@@ -14,7 +14,8 @@ import { TasksService } from '../services/tasks.service';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
-import { CreateTaskCommentDto } from '../dto/create-task-comment.dto'; // 👈 novo import
+import { CreateTaskCommentDto } from '../dto/create-task-comment.dto';
+import { AssignUserDto } from '../dto/assign-user.dto'; // ✅ Novo DTO para transferência
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { User } from '../../users/entities/user.entity';
@@ -86,7 +87,7 @@ export class TasksController {
     return this.tasksService.getTaskHistory(id);
   }
 
-  // ✅ NOVO: Criar comentário manual
+  // ✅ Criar comentário manual
   @Post(':id/comments')
   async addComment(
     @Param('id', ParseUUIDPipe) id: string,
@@ -95,11 +96,20 @@ export class TasksController {
     return this.tasksService.addComment(id, dto);
   }
 
-  // ✅ NOVO: Listar comentários
+  // ✅ Listar comentários
   @Get(':id/comments')
   async getComments(@Param('id', ParseUUIDPipe) id: string) {
     return this.tasksService.getComments(id);
   }
 
-  
+  // ✅ NOVO: Transferir tarefa para outro usuário
+  @Patch(':id/assign')
+  async assignUser(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignUserDto,
+    @Req() req: Request
+  ) {
+    const user = req.user as User;
+    return this.tasksService.assignUser(id, dto.userId, user);
+  }
 }
