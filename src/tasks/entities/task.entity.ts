@@ -3,11 +3,13 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany, // 👈 novo import aqui
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
 } from 'typeorm'
 import { User } from '../../users/entities/user.entity'
+import { TaskHistory } from './task-history.entity' // 👈 novo import aqui
 
 export enum TaskStatus {
   PENDING = 'PENDING',
@@ -62,4 +64,10 @@ export class Task {
 
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date
+
+  // 👇 Nova relação com histórico
+  @OneToMany(() => TaskHistory, history => history.task, {
+    cascade: true,
+  })
+  history: TaskHistory[]
 }

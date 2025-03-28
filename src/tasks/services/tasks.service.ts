@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus } from '../entities/task.entity';
+import { TaskHistory } from '../entities/task-history.entity'; // 👈 novo import
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
 import { User } from '../../users/entities/user.entity';
@@ -15,6 +16,9 @@ export class TasksService {
   constructor(
     @InjectRepository(Task)
     private taskRepo: Repository<Task>,
+
+    @InjectRepository(TaskHistory) // 👈 Novo Repository
+    private historyRepo: Repository<TaskHistory>,
   ) {}
 
   async create(dto: CreateTaskDto, user: User): Promise<Task> {
@@ -24,17 +28,14 @@ export class TasksService {
       createdBy: { id: user.id },
       assignedTo: { id: dto.assignedTo },
     });
-  
-    console.log('💡 Task antes do save:', task); // <-- AQUI!
-  
+
     const saved = await this.taskRepo.save(task);
-  
+
     return this.taskRepo.findOne({
       where: { id: saved.id },
       relations: ['createdBy', 'assignedTo'],
     });
   }
-  
 
   async findAll(user: User): Promise<Task[]> {
     return this.taskRepo.find({
@@ -83,51 +84,42 @@ export class TasksService {
   }
 
   async approve(id: string, user: User): Promise<Task> {
-    const task = await this.findOne(id, user);
-  
-    if (task.status === TaskStatus.APPROVED) {
-      throw new Error('Tarefa já aprovada.');
-    }
-  
-    task.status = TaskStatus.APPROVED;
-    await this.taskRepo.save(task);
-  
-    return this.taskRepo.findOne({
-      where: { id: task.id },
-      relations: ['createdBy', 'assignedTo'],
-    });
+    return this.updateStatus(id, TaskStatus.APPROVED, user);
   }
-  
+
   async reject(id: string, user: User): Promise<Task> {
-    const task = await this.findOne(id, user);
-  
-    if (task.status === TaskStatus.REJECTED) {
-      throw new Error('Tarefa já rejeitada.');
-    }
-  
-    task.status = TaskStatus.REJECTED;
-    await this.taskRepo.save(task);
-  
-    return this.taskRepo.findOne({
-      where: { id: task.id },
-      relations: ['createdBy', 'assignedTo'],
-    });
+    return this.updateStatus(id, TaskStatus.REJECTED, user);
   }
 
   async updateStatus(id: string, status: TaskStatus, user: User): Promise<Task> {
     const task = await this.findOne(id, user);
-  
-    if (!task) {
-      throw new NotFoundException('Tarefa não encontrada');
-    }
-  
-    task.status = status as TaskStatus;
-  
+
+    const previousStatus = task.status;
+    task.status = status;
+
     await this.taskRepo.save(task);
-  
+
+    // ✅ Registrar histórico automaticamente
+    await this.historyRepo.save({
+      action: 'STATUS_CHANGED',
+      from: previousStatus,
+      to: status,
+      task: { id: task.id },
+      changedBy: { id: user.id },
+    });
+
     return this.taskRepo.findOne({
       where: { id },
       relations: ['createdBy', 'assignedTo'],
     });
   }
-}  
+
+  // ✅ NOVO: Obter histórico de alterações
+  async getTaskHistory(taskId: string): Promise<TaskHistory[]> {
+    return this.historyRepo.find({
+      where: { task: { id: taskId } },
+      relations: ['changedBy'],
+      order: { changedAt: 'DESC' },
+    });
+  }
+}

@@ -37,10 +37,7 @@ export class TasksController {
   }
 
   @Get(':id')
-  async findOne(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request,
-  ) {
+  async findOne(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = req.user as User;
     return this.tasksService.findOne(id, user);
   }
@@ -61,19 +58,13 @@ export class TasksController {
   }
 
   @Patch(':id/approve')
-  async approve(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request,
-  ) {
+  async approve(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = req.user as User;
     return this.tasksService.approve(id, user);
   }
 
   @Patch(':id/reject')
-  async reject(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: Request,
-  ) {
+  async reject(@Param('id', ParseUUIDPipe) id: string, @Req() req: Request) {
     const user = req.user as User;
     return this.tasksService.reject(id, user);
   }
@@ -84,8 +75,13 @@ export class TasksController {
     @Body() dto: UpdateTaskStatusDto,
     @Req() req: Request,
   ) {
-    const user = req.user as User
-    return this.tasksService.updateStatus(id, dto.status as TaskStatus, user)
+    const user = req.user as User;
+    return this.tasksService.updateStatus(id, dto.status as TaskStatus, user);
   }
-  
+
+  // ✅ NOVO: Endpoint histórico
+  @Get(':id/history')
+  async getHistory(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tasksService.getTaskHistory(id);
+  }
 }
