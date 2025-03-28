@@ -7,17 +7,18 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   JoinColumn,
-} from 'typeorm';
-import { User } from '../../users/entities/user.entity';
-import { TaskHistory } from './task-history.entity';
-import { TaskComment } from './task-comment.entity'; // 👈 novo import
+} from 'typeorm'
+import { User } from '../../users/entities/user.entity'
+import { TaskHistory } from './task-history.entity'
+import { TaskComment } from './task-comment.entity'
 
+// 🟡 Status da tarefa com fluxo atualizado
 export enum TaskStatus {
-  PENDING = 'PENDING',
-  IN_PROGRESS = 'IN_PROGRESS',
-  WAITING_APPROVAL = 'WAITING_APPROVAL',
-  APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
+  WAITING_APPROVAL = 'WAITING_APPROVAL', // Criada, aguardando responsável aprovar
+  PENDING = 'PENDING',                   // Aprovada, pendente de início
+  IN_PROGRESS = 'IN_PROGRESS',          // Em andamento
+  APPROVED = 'APPROVED',                // Finalizada com sucesso
+  REJECTED = 'REJECTED',                // Recusada (não será executada)
 }
 
 export enum TaskLabel {
@@ -30,51 +31,49 @@ export enum TaskLabel {
 @Entity('tasks')
 export class Task {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id: string
 
   @Column()
-  title: string;
+  title: string
 
   @Column({ nullable: true })
-  description: string;
+  description: string
 
   @Column({
     type: 'enum',
     enum: TaskStatus,
-    default: TaskStatus.PENDING,
+    default: TaskStatus.WAITING_APPROVAL, // ✅ novo default
   })
-  status: TaskStatus;
+  status: TaskStatus
 
   @Column({
     type: 'enum',
     enum: TaskLabel,
     nullable: true,
   })
-  label: TaskLabel;
+  label: TaskLabel
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'assigned_to' })
-  assignedTo: User;
+  assignedTo: User
 
   @ManyToOne(() => User)
   @JoinColumn({ name: 'created_by' })
-  createdBy: User;
+  createdBy: User
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date;
+  createdAt: Date
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date;
+  updatedAt: Date
 
-  // 👇 Histórico da tarefa
   @OneToMany(() => TaskHistory, (history) => history.task, {
     cascade: true,
   })
-  history: TaskHistory[];
+  history: TaskHistory[]
 
-  // 👇 Comentários da tarefa (novo!)
   @OneToMany(() => TaskComment, (comment) => comment.task, {
     cascade: true,
   })
-  comments: TaskComment[];
+  comments: TaskComment[]
 }

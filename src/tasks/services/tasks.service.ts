@@ -7,10 +7,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus } from '../entities/task.entity';
 import { TaskHistory } from '../entities/task-history.entity';
-import { TaskComment } from '../entities/task-comment.entity'; // 👈 novo import
+import { TaskComment } from '../entities/task-comment.entity';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
-import { CreateTaskCommentDto } from '../dto/create-task-comment.dto'; // 👈 novo import
+import { CreateTaskCommentDto } from '../dto/create-task-comment.dto';
 import { User } from '../../users/entities/user.entity';
 
 @Injectable()
@@ -22,7 +22,7 @@ export class TasksService {
     @InjectRepository(TaskHistory)
     private historyRepo: Repository<TaskHistory>,
 
-    @InjectRepository(TaskComment) // 👈 novo repository
+    @InjectRepository(TaskComment)
     private commentRepo: Repository<TaskComment>,
 
     @InjectRepository(User)
@@ -33,11 +33,20 @@ export class TasksService {
     const task = this.taskRepo.create({
       title: dto.title,
       description: dto.description,
+      status: TaskStatus.WAITING_APPROVAL,
       createdBy: { id: user.id },
       assignedTo: { id: dto.assignedTo },
     });
 
     const saved = await this.taskRepo.save(task);
+
+    await this.historyRepo.save({
+      action: 'CREATED',
+      from: null,
+      to: TaskStatus.WAITING_APPROVAL,
+      task: { id: saved.id },
+      changedBy: { id: user.id },
+    });
 
     return this.taskRepo.findOne({
       where: { id: saved.id },
@@ -92,10 +101,30 @@ export class TasksService {
   }
 
   async approve(id: string, user: User): Promise<Task> {
-    return this.updateStatus(id, TaskStatus.APPROVED, user);
+    const task = await this.findOne(id, user);
+
+    if (task.status !== TaskStatus.WAITING_APPROVAL) {
+      throw new Error('Tarefa não está aguardando aprovação.');
+    }
+
+    if (task.assignedTo?.id !== user.id) {
+      throw new ForbiddenException('Apenas o responsável pode aprovar a tarefa.');
+    }
+
+    return this.updateStatus(id, TaskStatus.PENDING, user);
   }
 
   async reject(id: string, user: User): Promise<Task> {
+    const task = await this.findOne(id, user);
+
+    if (task.status !== TaskStatus.WAITING_APPROVAL) {
+      throw new Error('Tarefa não está aguardando aprovação.');
+    }
+
+    if (task.assignedTo?.id !== user.id) {
+      throw new ForbiddenException('Apenas o responsável pode rejeitar a tarefa.');
+    }
+
     return this.updateStatus(id, TaskStatus.REJECTED, user);
   }
 
@@ -129,7 +158,6 @@ export class TasksService {
     });
   }
 
-  // ✅ NOVO: Criar comentário manual
   async addComment(taskId: string, dto: CreateTaskCommentDto): Promise<TaskComment> {
     const task = await this.taskRepo.findOneByOrFail({ id: taskId });
     const user = await this.userRepo.findOneByOrFail({ id: dto.userId });
@@ -143,7 +171,6 @@ export class TasksService {
     return this.commentRepo.save(comment);
   }
 
-  // ✅ NOVO: Listar comentários da tarefa
   async getComments(taskId: string): Promise<TaskComment[]> {
     return this.commentRepo.find({
       where: { task: { id: taskId } },
