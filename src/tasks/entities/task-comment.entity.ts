@@ -14,15 +14,15 @@ import {
     @PrimaryGeneratedColumn('uuid')
     id: string;
   
-    @Column('text')
+    @Column()
     comment: string;
   
-    @ManyToOne(() => Task, (task) => task.comments, { onDelete: 'CASCADE' })
-    @JoinColumn({ name: 'task_id' })
+    @ManyToOne(() => Task, (task) => task.comments)
+    @JoinColumn({ name: 'taskId' }) // <- igual ao nome no banco
     task: Task;
   
-    @ManyToOne(() => User, { eager: true })
-    @JoinColumn({ name: 'user_id' })
+    @ManyToOne(() => User)
+    @JoinColumn({ name: 'userId' }) // <- igual ao nome no banco
     user: User;
   
     @CreateDateColumn({ name: 'created_at' })
