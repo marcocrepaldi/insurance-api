@@ -55,19 +55,24 @@ export class TasksService {
   }
 
   async findAll(user: User): Promise<Task[]> {
-    const isAdmin = user.role?.name === "Admin"
+    const isAdmin = user.role?.name === 'Admin'
+  
+    const where = isAdmin
+      ? {} // Admin vê todas
+      : [
+          { createdBy: { id: user.id } },
+          { assignedTo: { id: user.id } },
+        ]
   
     return this.taskRepo.find({
-      where: isAdmin
-        ? {} // Admin vê todas
-        : [
-            { createdBy: { id: user.id } },
-            { assignedTo: { id: user.id } },
-          ],
-      relations: ["assignedTo", "createdBy"],
-      order: { createdAt: "DESC" },
+      where,
+      relations: ['assignedTo', 'createdBy'],
+      order: { createdAt: 'DESC' },
     })
   }
+  
+  
+  
   
 
   async findOne(id: string, user: User): Promise<Task> {
