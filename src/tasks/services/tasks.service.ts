@@ -155,34 +155,31 @@ export class TasksService {
       where: { id: taskId },
       relations: ['assignedTo', 'createdBy'],
     });
-
+  
     if (!task) throw new NotFoundException('Tarefa não encontrada');
-
-    const newUser = await this.userRepo.findOne({
-      where: { id: userId },
-    });
-
+  
+    const newUser = await this.userRepo.findOneBy({ id: userId });
     if (!newUser) throw new NotFoundException('Usuário destinatário não encontrado');
-
-    const previousAssignee = task.assignedTo?.id;
-
+  
+    const previousUser = task.assignedTo;
+  
     task.assignedTo = newUser;
     await this.taskRepo.save(task);
-
+  
     await this.historyRepo.save({
       action: 'TRANSFERRED',
-      from: previousAssignee || null,
-      to: userId,
+      from: previousUser?.name || null,
+      to: newUser.name,
       task: { id: taskId },
       changedBy: { id: changedBy.id },
     });
-
+  
     return this.taskRepo.findOne({
       where: { id: taskId },
       relations: ['createdBy', 'assignedTo'],
     });
   }
-
+  
   async getTaskHistory(taskId: string): Promise<TaskHistory[]> {
     return this.historyRepo.find({
       where: { task: { id: taskId } },
