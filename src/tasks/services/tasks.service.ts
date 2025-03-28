@@ -6,9 +6,11 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Task, TaskStatus } from '../entities/task.entity';
-import { TaskHistory } from '../entities/task-history.entity'; // 👈 novo import
+import { TaskHistory } from '../entities/task-history.entity';
+import { TaskComment } from '../entities/task-comment.entity'; // 👈 novo import
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
+import { CreateTaskCommentDto } from '../dto/create-task-comment.dto'; // 👈 novo import
 import { User } from '../../users/entities/user.entity';
 
 @Injectable()
@@ -17,8 +19,14 @@ export class TasksService {
     @InjectRepository(Task)
     private taskRepo: Repository<Task>,
 
-    @InjectRepository(TaskHistory) // 👈 Novo Repository
+    @InjectRepository(TaskHistory)
     private historyRepo: Repository<TaskHistory>,
+
+    @InjectRepository(TaskComment) // 👈 novo repository
+    private commentRepo: Repository<TaskComment>,
+
+    @InjectRepository(User)
+    private userRepo: Repository<User>,
   ) {}
 
   async create(dto: CreateTaskDto, user: User): Promise<Task> {
@@ -99,7 +107,6 @@ export class TasksService {
 
     await this.taskRepo.save(task);
 
-    // ✅ Registrar histórico automaticamente
     await this.historyRepo.save({
       action: 'STATUS_CHANGED',
       from: previousStatus,
@@ -114,12 +121,34 @@ export class TasksService {
     });
   }
 
-  // ✅ NOVO: Obter histórico de alterações
   async getTaskHistory(taskId: string): Promise<TaskHistory[]> {
     return this.historyRepo.find({
       where: { task: { id: taskId } },
       relations: ['changedBy'],
       order: { changedAt: 'DESC' },
+    });
+  }
+
+  // ✅ NOVO: Criar comentário manual
+  async addComment(taskId: string, dto: CreateTaskCommentDto): Promise<TaskComment> {
+    const task = await this.taskRepo.findOneByOrFail({ id: taskId });
+    const user = await this.userRepo.findOneByOrFail({ id: dto.userId });
+
+    const comment = this.commentRepo.create({
+      comment: dto.comment,
+      task,
+      user,
+    });
+
+    return this.commentRepo.save(comment);
+  }
+
+  // ✅ NOVO: Listar comentários da tarefa
+  async getComments(taskId: string): Promise<TaskComment[]> {
+    return this.commentRepo.find({
+      where: { task: { id: taskId } },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
     });
   }
 }

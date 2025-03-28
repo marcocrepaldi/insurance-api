@@ -13,10 +13,11 @@ import {
 import { TasksService } from '../services/tasks.service';
 import { CreateTaskDto } from '../dto/create-task.dto';
 import { UpdateTaskDto } from '../dto/update-task.dto';
+import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
+import { CreateTaskCommentDto } from '../dto/create-task-comment.dto'; // 👈 novo import
 import { AuthGuard } from '@nestjs/passport';
 import { Request } from 'express';
 import { User } from '../../users/entities/user.entity';
-import { UpdateTaskStatusDto } from '../dto/update-task-status.dto';
 import { TaskStatus } from '../entities/task.entity';
 
 @Controller('tasks')
@@ -79,9 +80,24 @@ export class TasksController {
     return this.tasksService.updateStatus(id, dto.status as TaskStatus, user);
   }
 
-  // ✅ NOVO: Endpoint histórico
+  // ✅ Histórico de alterações
   @Get(':id/history')
   async getHistory(@Param('id', ParseUUIDPipe) id: string) {
     return this.tasksService.getTaskHistory(id);
+  }
+
+  // ✅ NOVO: Criar comentário manual
+  @Post(':id/comments')
+  async addComment(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CreateTaskCommentDto,
+  ) {
+    return this.tasksService.addComment(id, dto);
+  }
+
+  // ✅ NOVO: Listar comentários
+  @Get(':id/comments')
+  async getComments(@Param('id', ParseUUIDPipe) id: string) {
+    return this.tasksService.getComments(id);
   }
 }
