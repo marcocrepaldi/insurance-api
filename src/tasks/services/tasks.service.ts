@@ -29,6 +29,12 @@ export class TasksService {
     private userRepo: Repository<User>,
   ) {}
 
+  private isAdmin(user: User): boolean {
+    const roleName =
+      typeof user.role === 'string' ? user.role : user.role?.name;
+    return roleName === 'Admin';
+  }
+
   async create(dto: CreateTaskDto, user: User): Promise<Task> {
     const task = this.taskRepo.create({
       title: dto.title,
@@ -55,15 +61,13 @@ export class TasksService {
   }
 
   async findAll(user: User): Promise<Task[]> {
-    // ✅ Admin pode ver todas
-    if (user.role?.name === 'Admin') {
+    if (this.isAdmin(user)) {
       return this.taskRepo.find({
         relations: ['assignedTo', 'createdBy'],
         order: { createdAt: 'DESC' },
       });
     }
 
-    // Caso contrário, só criadas ou atribuídas a ele
     return this.taskRepo.find({
       where: [
         { createdBy: { id: user.id } },
@@ -82,9 +86,8 @@ export class TasksService {
 
     if (!task) throw new NotFoundException('Tarefa não encontrada');
 
-    const isAdmin = user.role?.name === 'Admin';
     const isAuthorized =
-      isAdmin ||
+      this.isAdmin(user) ||
       task.createdBy?.id === user.id ||
       task.assignedTo?.id === user.id;
 
@@ -184,7 +187,7 @@ export class TasksService {
     await this.historyRepo.save({
       action: 'TRANSFERRED',
       from: previousAssignee || null,
-      to: userId,
+      to: newUser.name,
       task: { id: taskId },
       changedBy: { id: changedBy.id },
     });
