@@ -18,7 +18,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 @ApiTags('insurance-quotes')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
-@Controller('api/insurance-quotes')
+@Controller('insurance-quotes')
 export class InsuranceQuoteController {
   constructor(private readonly service: InsuranceQuoteService) {}
 

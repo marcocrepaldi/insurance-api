@@ -20,7 +20,7 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 @ApiTags('insurance-proposals')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
-@Controller('api/insurance-quotes/proposals')
+@Controller('insurance-quotes/proposals')
 export class UploadProposalController {
   constructor(
     private readonly visionService: GoogleVisionService,

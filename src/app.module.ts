@@ -10,6 +10,7 @@ import { ClientsModule } from './clients/clients.module';
 import { ProducerModule } from './producers/producer.module';
 import { InsurersModule } from './insurers/insurers.module';
 import { TasksModule } from './tasks/tasks.module';
+import { InsuranceQuoteModule } from './insurance-quote/insurance-quote.module';
 
 @Module({
   imports: [
@@ -38,7 +39,8 @@ import { TasksModule } from './tasks/tasks.module';
     ClientsModule,
     ProducerModule,
     InsurersModule,
-    TasksModule
+    TasksModule,
+    InsuranceQuoteModule
   ],
   controllers: [AppController],
   providers: [AppService],
