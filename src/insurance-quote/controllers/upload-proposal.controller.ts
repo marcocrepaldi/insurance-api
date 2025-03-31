@@ -5,15 +5,21 @@ import {
   UploadedFile,
   UseInterceptors,
   Body,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { GoogleVisionService } from '../services/google-vision.service';
-import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto'; // ✅ Correto aqui!
-import { InsuranceProposalService } from '../services/insurance-proposal.service';
-import { diskStorage } from 'multer';
-import { v4 as uuid } from 'uuid';
-import * as path from 'path';
+  UseGuards,
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { GoogleVisionService } from '../services/google-vision.service'
+import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto'
+import { InsuranceProposalService } from '../services/insurance-proposal.service'
+import { diskStorage } from 'multer'
+import { v4 as uuid } from 'uuid'
+import * as path from 'path'
+import { AuthGuard } from '@nestjs/passport'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
+@ApiTags('insurance-proposals')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
 @Controller('api/insurance-quotes/proposals')
 export class UploadProposalController {
   constructor(
@@ -27,8 +33,8 @@ export class UploadProposalController {
       storage: diskStorage({
         destination: './uploads/proposals',
         filename: (req, file, cb) => {
-          const ext = path.extname(file.originalname);
-          cb(null, `${uuid()}${ext}`);
+          const ext = path.extname(file.originalname)
+          cb(null, `${uuid()}${ext}`)
         },
       }),
     }),
@@ -37,15 +43,15 @@ export class UploadProposalController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateInsuranceProposalDto,
   ) {
-    const text = await this.visionService.extractTextFromPDF(file.path);
+    const text = await this.visionService.extractTextFromPDF(file.path)
 
-    // TODO: Mapear o texto para os campos abaixo com inteligência
-    dto.pdfPath = file.path;
-    dto.coverages = [];
-    dto.insuredAmount = 0;
-    dto.totalPremium = 0;
-    dto.observations = text.slice(0, 300); // Pré-visualização
+    // TODO: Mapear o texto com mais inteligência
+    dto.pdfPath = file.path
+    dto.coverages = []
+    dto.insuredAmount = 0
+    dto.totalPremium = 0
+    dto.observations = text.slice(0, 300)
 
-    return this.proposalService.create(dto);
+    return this.proposalService.create(dto)
   }
 }
