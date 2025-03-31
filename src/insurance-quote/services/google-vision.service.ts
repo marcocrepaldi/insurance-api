@@ -10,13 +10,23 @@ export class GoogleVisionService {
   constructor() {
     const credentialsPath = path.resolve(__dirname, '../../../../tmp/gcp-key.json');
 
-    // Cria o JSON a partir da env se ainda não existe
+    // Cria o JSON de credenciais localmente se ainda não existir
     if (!fs.existsSync(credentialsPath)) {
       const base64 = process.env.GOOGLE_VISION_CREDENTIALS_BASE64;
-      if (!base64) throw new Error('Variável GOOGLE_VISION_CREDENTIALS_BASE64 não está definida.');
-      const decoded = Buffer.from(base64, 'base64').toString('utf-8');
-      fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
-      fs.writeFileSync(credentialsPath, decoded);
+
+      if (!base64) {
+        throw new Error('Variável GOOGLE_VISION_CREDENTIALS_BASE64 não está definida.');
+      }
+
+      try {
+        const decoded = Buffer.from(base64, 'base64').toString('utf-8');
+        fs.mkdirSync(path.dirname(credentialsPath), { recursive: true });
+        fs.writeFileSync(credentialsPath, decoded);
+        console.log('[Vision] Credenciais geradas com sucesso em:', credentialsPath);
+      } catch (err) {
+        console.error('[Vision] Falha ao escrever credenciais:', err);
+        throw new InternalServerErrorException('Falha ao criar arquivo de credenciais do Google Vision.');
+      }
     }
 
     this.client = new ImageAnnotatorClient({ keyFilename: credentialsPath });
@@ -28,10 +38,14 @@ export class GoogleVisionService {
     }
 
     try {
+      console.log('[Vision] Iniciando leitura do PDF:', filePath);
       const [result] = await this.client.documentTextDetection(filePath);
-      return result.fullTextAnnotation?.text || '';
+      const extracted = result.fullTextAnnotation?.text || '';
+      console.log('[Vision] Texto extraído com sucesso!');
+
+      return extracted;
     } catch (error) {
-      console.error('Erro ao processar PDF com Google Vision:', error);
+      console.error('[Vision] Erro ao processar PDF:', error);
       throw new InternalServerErrorException('Erro ao processar PDF com Google Vision.');
     }
   }
