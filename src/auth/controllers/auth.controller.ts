@@ -5,12 +5,23 @@ import {
   HttpCode,
   UsePipes,
   ValidationPipe,
+  Get,
+  Req,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { RegisterDto } from '../dto/register.dto';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
-import { ApiTags, ApiOperation, ApiResponse, ApiBody } from '@nestjs/swagger';
+import { Request } from 'express';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBody,
+  ApiBearerAuth,
+} from '@nestjs/swagger';
+import { AuthGuard } from '@nestjs/passport';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -52,5 +63,15 @@ export class AuthController {
   @ApiBody({ type: RefreshTokenDto })
   async refreshToken(@Body() refreshTokenDto: RefreshTokenDto) {
     return await this.authService.refreshToken(refreshTokenDto);
+  }
+
+  @Get('me')
+  @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obter dados do usuário autenticado' })
+  @ApiResponse({ status: 200, description: 'Usuário autenticado retornado com sucesso' })
+  @ApiResponse({ status: 401, description: 'Token inválido ou não enviado' })
+  async getMe(@Req() req: Request) {
+    return req.user;
   }
 }

@@ -3,17 +3,17 @@ import {
   ConflictException,
   UnauthorizedException,
   NotFoundException,
-} from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { UsersService } from '../../users/services/users.service';
-import { RegisterDto } from '../dto/register.dto';
-import { RefreshTokenDto } from '../dto/refresh-token.dto';
-import { User } from '../../users/entities/user.entity';
-import { RefreshToken } from '../entities/refresh-token.entity';
-import { Role } from '../../roles/entities/role.entity';
-import * as bcrypt from 'bcrypt';
+} from '@nestjs/common'
+import { JwtService } from '@nestjs/jwt'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Repository } from 'typeorm'
+import { UsersService } from '../../users/services/users.service'
+import { RegisterDto } from '../dto/register.dto'
+import { RefreshTokenDto } from '../dto/refresh-token.dto'
+import { User } from '../../users/entities/user.entity'
+import { RefreshToken } from '../entities/refresh-token.entity'
+import { Role } from '../../roles/entities/role.entity'
+import * as bcrypt from 'bcrypt'
 
 @Injectable()
 export class AuthService {
@@ -22,54 +22,55 @@ export class AuthService {
     private readonly jwtService: JwtService,
 
     @InjectRepository(RefreshToken)
-    private readonly refreshTokenRepository: Repository<RefreshToken>,
+    private readonly refreshTokenRepo: Repository<RefreshToken>,
 
     @InjectRepository(Role)
-    private readonly rolesRepository: Repository<Role>,
+    private readonly roleRepo: Repository<Role>,
   ) {}
 
   async register(registerDto: RegisterDto) {
-    const existingUser = await this.usersService.findByEmail(registerDto.email);
-    if (existingUser) {
-      throw new ConflictException('E-mail já cadastrado.');
+    const existing = await this.usersService.findByEmail(registerDto.email)
+    if (existing) {
+      throw new ConflictException('E-mail já cadastrado.')
     }
 
-    const role = await this.rolesRepository.findOne({
-      where: { id: registerDto.roleId },
-    });
+    const role = await this.roleRepo.findOne({ where: { id: registerDto.roleId } })
+    if (!role) throw new NotFoundException('Role não encontrada.')
 
-    if (!role) {
-      throw new NotFoundException('Role não encontrada.');
-    }
-
-    const { roleId, ...userData } = registerDto;
+    const { roleId, ...rest } = registerDto
 
     const newUser = await this.usersService.create({
-      ...userData,
+      ...rest,
       role,
-    } as any);
+    } as any)
 
-    return newUser;
+    return newUser
   }
 
-  async validateUser(email: string, password: string) {
-    const user = await this.usersService.findByEmail(email, true);
+  async validateUser(email: string, password: string): Promise<User> {
+    const user = await this.usersService.findByEmail(email, true)
     if (!user || !user.password) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+      throw new UnauthorizedException('Credenciais inválidas.')
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      throw new UnauthorizedException('Credenciais inválidas.');
+    const match = await bcrypt.compare(password, user.password)
+    if (!match) {
+      throw new UnauthorizedException('Credenciais inválidas.')
     }
 
-    return user;
+    return user
   }
 
   async login(user: User) {
-    const payload = { id: user.id, email: user.email, role: user.role?.name };
-    const accessToken = this.jwtService.sign(payload);
-    const refreshToken = await this.generateRefreshToken(user);
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role?.name,
+    }
+
+    const accessToken = this.jwtService.sign(payload)
+    const refreshToken = await this.generateRefreshToken(user)
 
     return {
       accessToken,
@@ -78,49 +79,47 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role?.name,
+        role: {
+          id: user.role?.id,
+          name: user.role?.name,
+        },
       },
-    };
+    }
   }
 
-  async generateRefreshToken(user: User) {
-    const token = this.jwtService.sign({ userId: user.id }, { expiresIn: '7d' });
+  async generateRefreshToken(user: User): Promise<string> {
+    const token = this.jwtService.sign({ userId: user.id }, { expiresIn: '7d' })
 
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
+    const expiresAt = new Date()
+    expiresAt.setDate(expiresAt.getDate() + 7)
 
-    const tokenHash = await bcrypt.hash(token, 10);
+    const tokenHash = await bcrypt.hash(token, 10)
 
-    const refreshToken = this.refreshTokenRepository.create({
-      token, // opcional
+    const refreshToken = this.refreshTokenRepo.create({
+      token,
       tokenHash,
       user,
       expiresAt,
-    });
+    })
 
-    await this.refreshTokenRepository.save(refreshToken);
-    return token;
+    await this.refreshTokenRepo.save(refreshToken)
+    return token
   }
 
-  async refreshToken(refreshTokenDto: RefreshTokenDto) {
-    const storedTokens = await this.refreshTokenRepository.find({
-      relations: ['user'],
-    });
+  async refreshToken(dto: RefreshTokenDto) {
+    const storedTokens = await this.refreshTokenRepo.find({ relations: ['user'] })
 
-    const matchingToken = await Promise.any(
-      storedTokens.map(async (stored) => {
-        const match = await bcrypt.compare(
-          refreshTokenDto.refreshToken,
-          stored.tokenHash,
-        );
-        return match ? stored : null;
+    const matching = await Promise.any(
+      storedTokens.map(async (entry) => {
+        const match = await bcrypt.compare(dto.refreshToken, entry.tokenHash)
+        return match ? entry : null
       }),
-    ).catch(() => null);
+    ).catch(() => null)
 
-    if (!matchingToken || matchingToken.expiresAt < new Date()) {
-      throw new UnauthorizedException('Token inválido ou expirado.');
+    if (!matching || matching.expiresAt < new Date()) {
+      throw new UnauthorizedException('Token inválido ou expirado.')
     }
 
-    return this.login(matchingToken.user);
+    return this.login(matching.user)
   }
 }

@@ -1,41 +1,52 @@
-// src/insurance-quote/dto/create-insurance-quote.dto.ts
-import { IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, IsNumber, IsArray } from 'class-validator';
-import { QuoteStage } from '../entities/insurance-quote.entity';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  IsNumber,
+  IsArray,
+  IsDateString,
+} from 'class-validator'
+import { QuoteStage } from '../entities/insurance-quote.entity'
 
 export class CreateInsuranceQuoteDto {
   @IsNotEmpty()
   @IsString()
-  title: string;
+  title: string
 
   @IsOptional()
   @IsString()
-  description?: string;
+  description?: string
 
   @IsOptional()
   @IsEnum(QuoteStage)
-  stage?: QuoteStage;
+  stage?: QuoteStage
 
   @IsOptional()
-  proposalSentAt?: Date;
+  @IsDateString()
+  proposalSentAt?: Date
 
   @IsOptional()
-  expectedDecisionDate?: Date;
+  @IsDateString()
+  expectedDecisionDate?: Date
 
   @IsOptional()
   @IsNumber()
-  expectedPremium?: number;
+  expectedPremium?: number
 
   @IsOptional()
   @IsArray()
-  suggestedProducts?: string[];
+  @IsString({ each: true })
+  suggestedProducts?: string[]
 
   @IsUUID()
-  clientId: string;
+  clientId: string
 
   @IsUUID()
-  producerId: string;
+  producerId: string
 
   @IsOptional()
   @IsUUID()
-  createdBy?: string;
+  createdBy?: string
 }

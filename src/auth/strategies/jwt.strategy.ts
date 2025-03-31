@@ -1,12 +1,13 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { PassportStrategy } from '@nestjs/passport'
+import { ExtractJwt, Strategy } from 'passport-jwt'
+import { ConfigService } from '@nestjs/config'
 
 interface JwtPayload {
-  id: string;
-  email: string;
-  role: string;
+  userId: string
+  email: string
+  name: string
+  role: string
 }
 
 @Injectable()
@@ -15,27 +16,26 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'), // <-- Substituímos process.env pelo ConfigService
-    });
+      secretOrKey: configService.get<string>('JWT_SECRET'),
+    })
 
     if (!configService.get('JWT_SECRET')) {
-      throw new Error(
-        'JWT_SECRET não está definido nas variáveis de ambiente.',
-      );
+      throw new Error('JWT_SECRET não está definido nas variáveis de ambiente.')
     }
   }
 
   async validate(payload: JwtPayload) {
-    if (!payload || !payload.id) {
-      throw new UnauthorizedException('Token inválido.');
+    if (!payload || !payload.userId) {
+      throw new UnauthorizedException('Token inválido.')
     }
-  
-    // ✅ Corrigido: retornar como 'id'
+
     return {
-      id: payload.id,
+      id: payload.userId,
+      name: payload.name,
       email: payload.email,
-      role: payload.role, // ❌ Isso pode ser apenas um ID ou uma string
-    };
+      role: {
+        name: payload.role,
+      },
+    }
   }
-  
 }
