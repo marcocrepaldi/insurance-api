@@ -1,8 +1,6 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateInsuranceProposalsTable1743386027297 implements MigrationInterface {
-  name = 'CreateInsuranceProposalsTable1743386027297';
-
+export class CreateInsuranceproposal1743462994881 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
       CREATE TABLE "insurance_proposals" (
@@ -17,12 +15,14 @@ export class CreateInsuranceProposalsTable1743386027297 implements MigrationInte
         "updated_at" TIMESTAMP NOT NULL DEFAULT now(),
         "quote_id" uuid,
         CONSTRAINT "PK_insurance_proposals_id" PRIMARY KEY ("id"),
-        CONSTRAINT "FK_insurance_proposals_quote" FOREIGN KEY ("quote_id") REFERENCES "insurance_quotes"("id") ON DELETE CASCADE ON UPDATE NO ACTION
-      )
+        CONSTRAINT "FK_insurance_proposals_quote" FOREIGN KEY ("quote_id") REFERENCES "insurance_quotes"("id") ON DELETE CASCADE
+      );
     `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE "insurance_proposals"`);
+    await queryRunner.query(`
+      DROP TABLE "insurance_proposals";
+    `);
   }
 }
