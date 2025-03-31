@@ -8,22 +8,33 @@ export class GoogleVisionService {
   private client: ImageAnnotatorClient;
 
   constructor() {
+    const credentialsPath = path.resolve(__dirname, '../../../GoogleCloudVision/neat-fin-336618-83b16963d844.json');
+
+    if (!fs.existsSync(credentialsPath)) {
+      throw new Error(`Arquivo de credenciais Google Vision não encontrado em: ${credentialsPath}`);
+    }
+
     this.client = new ImageAnnotatorClient({
-      keyFilename: path.join(__dirname, '../../../GoogleCloudVision/neat-fin-336618-06ff1f75bcb.json'),
+      keyFilename: credentialsPath,
     });
   }
 
   async extractTextFromPDF(filePath: string): Promise<string> {
     if (!fs.existsSync(filePath)) {
-      throw new InternalServerErrorException('Arquivo não encontrado para leitura.');
+      throw new InternalServerErrorException('Arquivo PDF não encontrado para leitura.');
     }
 
     try {
       const [result] = await this.client.documentTextDetection(filePath);
-      const fullText = result.fullTextAnnotation?.text || '';
-      return fullText;
+
+      if (!result.fullTextAnnotation?.text) {
+        console.warn('⚠️ Nenhum texto detectado no PDF.');
+        return '';
+      }
+
+      return result.fullTextAnnotation.text;
     } catch (error) {
-      console.error('Erro ao extrair texto do PDF:', error);
+      console.error('❌ Erro ao extrair texto com Google Vision:', error?.message || error);
       throw new InternalServerErrorException('Erro ao processar o PDF com Google Vision.');
     }
   }
