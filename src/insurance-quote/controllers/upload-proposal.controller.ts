@@ -15,6 +15,7 @@ import { InsuranceProposalService } from '../services/insurance-proposal.service
 import { diskStorage } from 'multer'
 import { v4 as uuid } from 'uuid'
 import * as path from 'path'
+import * as fs from 'fs'
 import { AuthGuard } from '@nestjs/passport'
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 
@@ -51,14 +52,23 @@ export class UploadProposalController {
 
     console.log('[Upload] Iniciando leitura com Google Vision...')
     const extractedText = await this.visionService.extractTextFromPDF(file.path)
-    console.log('[Upload] Texto extraído com sucesso!')
+    console.log('[Vision] ✅ Texto extraído com sucesso!')
+    console.log('[Vision] 🔤 Texto extraído completo:\n', extractedText)
+
+    // (Opcional) Salvar texto em arquivo para depuração futura
+    const txtPath = `./uploads/extracted-text/${uuid()}.txt`
+    fs.mkdirSync(path.dirname(txtPath), { recursive: true })
+    fs.writeFileSync(txtPath, extractedText || '')
+    console.log(`[Vision] 💾 Texto salvo para análise em: ${txtPath}`)
 
     // Conversão segura de valores
     dto.totalPremium = Number(dto.totalPremium) || 0
     dto.insuredAmount = Number(dto.insuredAmount) || 0
-
     dto.pdfPath = file.path
-    dto.observations = extractedText?.slice(0, 500) || 'Nenhuma observação extraída.'
+    dto.observations =
+      extractedText && extractedText.trim().length > 0
+        ? extractedText.slice(0, 500)
+        : 'Texto extraído estava vazio ou ilegível.'
     dto.coverages = []
 
     console.log('[Upload] Salvando proposta no banco de dados...')
