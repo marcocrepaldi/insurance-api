@@ -4761,11 +4761,6 @@ pause@0.0.1:
   resolved "https://registry.yarnpkg.com/pause/-/pause-0.0.1.tgz#1d408b3fdb76923b9543d96fb4c9dfd535d9cb5d"
   integrity sha512-KG8UEiEVkR3wGEb4m5yZkVCzigAD+cVEJck2CzYZO37ZGJfctvVptVO192MwrtPhzONn6go8ylnOdMhKqi4nfg==
 
-pdf-poppler@^0.2.1:
-  version "0.2.1"
-  resolved "https://registry.yarnpkg.com/pdf-poppler/-/pdf-poppler-0.2.1.tgz#e927f91b88621a0e55d6f709ddc60c1e826e8113"
-  integrity sha512-ilrm02mfsha1pR1wmiVKNRIkjvSo70gorg3DIPOzCl6pFU5S39z+gTHLiwIKn808H4YVYVnm6JstUhGNfiGKXg==
-
 pg-cloudflare@^1.1.1:
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/pg-cloudflare/-/pg-cloudflare-1.1.1.tgz#e6d5833015b170e23ae819e8c5d7eaedb472ca98"
