@@ -3,6 +3,7 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common'
 import { ImageAnnotatorClient } from '@google-cloud/vision'
 import * as fs from 'fs'
 import * as path from 'path'
+import { v4 as uuid } from 'uuid'
 
 @Injectable()
 export class GoogleVisionService {
@@ -21,10 +22,8 @@ export class GoogleVisionService {
 
       try {
         const decoded = Buffer.from(base64, 'base64').toString('utf-8')
-
         fs.mkdirSync(path.dirname(credentialsPath), { recursive: true })
         fs.writeFileSync(credentialsPath, decoded)
-
         console.log('[Vision] ✅ Credenciais geradas com sucesso:', credentialsPath)
       } catch (err) {
         console.error('[Vision] ❌ Falha ao escrever credenciais:', err)
@@ -34,7 +33,6 @@ export class GoogleVisionService {
       }
     }
 
-    // Inicializa cliente com o arquivo de credenciais
     this.client = new ImageAnnotatorClient({ keyFilename: credentialsPath })
   }
 
@@ -45,12 +43,23 @@ export class GoogleVisionService {
     }
 
     try {
-      console.log('[Vision] 🔍 Lendo PDF com Google Vision:', filePath)
+      const fileSize = fs.statSync(filePath).size
+      console.log('[Vision] 📦 Tamanho do arquivo PDF:', fileSize, 'bytes')
 
+      console.log('[Vision] 🔍 Iniciando leitura com Google Vision:', filePath)
       const [result] = await this.client.documentTextDetection(filePath)
-      const extracted = result.fullTextAnnotation?.text || ''
 
+      const extracted = result.fullTextAnnotation?.text || ''
       console.log('[Vision] ✅ Texto extraído com sucesso!')
+      console.log('[Vision] 🔤 Primeiros 300 caracteres:\n', extracted.slice(0, 300))
+
+      // Salvar JSON completo do resultado para análise
+      const debugDir = './uploads/extracted-debug'
+      fs.mkdirSync(debugDir, { recursive: true })
+      const debugPath = path.join(debugDir, `${uuid()}-vision.json`)
+      fs.writeFileSync(debugPath, JSON.stringify(result, null, 2))
+      console.log('[Vision] 💾 JSON salvo para depuração em:', debugPath)
+
       return extracted
     } catch (error) {
       console.error('[Vision] ❌ Erro ao processar PDF com Vision API:', error)
