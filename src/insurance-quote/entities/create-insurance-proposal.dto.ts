@@ -1,33 +1,33 @@
 // src/insurance-quote/dto/create-insurance-proposal.dto.ts
-import { IsUUID, IsNotEmpty, IsNumber, IsString, IsOptional, IsArray } from 'class-validator';
+import { IsUUID, IsNotEmpty, IsNumber, IsString, IsOptional, IsArray } from 'class-validator'
 
 export class CreateInsuranceProposalDto {
   @IsUUID()
-  quoteId: string;
+  quoteId: string
 
   @IsString()
   @IsNotEmpty()
-  insurerName: string;
+  insurerName: string
 
   @IsNumber()
-  totalPremium: number;
+  totalPremium: number
 
   @IsNumber()
-  insuredAmount: number;
+  insuredAmount: number
 
   @IsOptional()
   @IsString()
-  observations?: string;
+  observations?: string
 
   @IsOptional()
   @IsString()
-  pdfPath?: string;
+  pdfPath?: string
 
   @IsOptional()
   @IsArray()
   coverages?: {
-    name: string;
-    value: number;
-    deductible?: string;
-  }[];
+    name: string
+    value: number
+    deductible?: string
+  }[]
 }
