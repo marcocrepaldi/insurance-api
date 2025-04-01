@@ -23,12 +23,11 @@ export class GoogleVisionService {
         const decoded = Buffer.from(base64, 'base64').toString('utf-8')
         fs.mkdirSync(path.dirname(credentialsPath), { recursive: true })
         fs.writeFileSync(credentialsPath, decoded)
+
         console.log('[Vision] ✅ Credenciais geradas com sucesso:', credentialsPath)
       } catch (err) {
-        console.error('[Vision] ❌ Falha ao escrever credenciais:', err)
-        throw new InternalServerErrorException(
-          'Erro ao criar o arquivo de credenciais do Google Vision.',
-        )
+        console.error('[Vision] ❌ Falha ao salvar credenciais:', err)
+        throw new InternalServerErrorException('Erro ao criar credenciais do Google Vision.')
       }
     }
 
@@ -48,22 +47,23 @@ export class GoogleVisionService {
       const [result] = await this.client.documentTextDetection(filePath)
 
       const extracted = result.fullTextAnnotation?.text || ''
-      console.log('[Vision] ✅ Texto extraído com sucesso!')
-      console.log('[Vision] 🔤 Primeiros caracteres:\n', extracted.slice(0, 300))
+      console.log('[Vision] ✅ Texto extraído com sucesso.')
+      console.log('[Vision] 🔤 Texto (prévia):\n', extracted.slice(0, 300))
 
-      // Salva JSON completo para depuração
+      // Salvar resultado bruto para depuração
       const debugDir = './uploads/extracted-debug'
       fs.mkdirSync(debugDir, { recursive: true })
-      const debugPath = path.join(debugDir, `${uuid()}-vision.json`)
-      fs.writeFileSync(debugPath, JSON.stringify(result, null, 2))
-      console.log('[Vision] 💾 JSON bruto salvo em:', debugPath)
+
+      const debugFilePath = path.join(debugDir, `${uuid()}-vision.json`)
+      fs.writeFileSync(debugFilePath, JSON.stringify(result, null, 2))
+      console.log('[Vision] 💾 Resultado salvo em:', debugFilePath)
 
       return {
         extractedText: extracted,
         visionResultJson: result,
       }
     } catch (error) {
-      console.error('[Vision] ❌ Erro ao processar PDF com Vision API:', error)
+      console.error('[Vision] ❌ Erro ao processar PDF:', error)
       throw new InternalServerErrorException('Erro ao processar PDF com Google Vision.')
     }
   }
