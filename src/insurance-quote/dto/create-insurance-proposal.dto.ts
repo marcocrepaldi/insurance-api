@@ -8,12 +8,13 @@ import {
     IsArray,
     ValidateNested,
   } from 'class-validator';
-  import { Type } from 'class-transformer';
+  import { Type, Transform } from 'class-transformer';
   
   class CoverageDto {
     @IsString()
     name: string;
   
+    @Transform(({ value }) => parseFloat(value))
     @IsNumber()
     value: number;
   
@@ -30,9 +31,11 @@ import {
     @IsNotEmpty()
     insurerName: string;
   
+    @Transform(({ value }) => parseFloat(value))
     @IsNumber()
     totalPremium: number;
   
+    @Transform(({ value }) => parseFloat(value))
     @IsNumber()
     insuredAmount: number;
   

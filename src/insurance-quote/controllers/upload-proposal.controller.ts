@@ -1,3 +1,4 @@
+// src/insurance-quote/controllers/upload-proposal.controller.ts
 import {
   Controller,
   Post,
@@ -5,16 +6,16 @@ import {
   UseInterceptors,
   Body,
   UseGuards,
-} from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { GoogleVisionService } from '../services/google-vision.service';
-import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto';
-import { InsuranceProposalService } from '../services/insurance-proposal.service';
-import { diskStorage } from 'multer';
-import { v4 as uuid } from 'uuid';
-import * as path from 'path';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { GoogleVisionService } from '../services/google-vision.service'
+import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto'
+import { InsuranceProposalService } from '../services/insurance-proposal.service'
+import { diskStorage } from 'multer'
+import { v4 as uuid } from 'uuid'
+import * as path from 'path'
+import { AuthGuard } from '@nestjs/passport'
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
 
 @ApiTags('insurance-proposals')
 @ApiBearerAuth()
@@ -32,8 +33,8 @@ export class UploadProposalController {
       storage: diskStorage({
         destination: './uploads/proposals',
         filename: (req, file, cb) => {
-          const ext = path.extname(file.originalname);
-          cb(null, `${uuid()}${ext}`);
+          const ext = path.extname(file.originalname)
+          cb(null, `${uuid()}${ext}`)
         },
       }),
     }),
@@ -42,17 +43,19 @@ export class UploadProposalController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateInsuranceProposalDto,
   ) {
-    console.log('[Upload] Iniciando leitura com Google Vision...');
-    const extractedText = await this.visionService.extractTextFromPDF(file.path);
-    console.log('[Upload] Texto extraído com sucesso!');
+    console.log('[Upload] Iniciando leitura com Google Vision...')
+    const extractedText = await this.visionService.extractTextFromPDF(file.path)
+    console.log('[Upload] Texto extraído com sucesso!')
 
-    dto.pdfPath = file.path;
-    dto.observations = extractedText?.slice(0, 500) || 'Nenhuma observação extraída.';
-    dto.coverages = [];
-    dto.totalPremium = 0;
-    dto.insuredAmount = 0;
+    // ✅ Conversão segura de campos numéricos vindos do formulário
+    dto.totalPremium = Number(dto.totalPremium) || 0
+    dto.insuredAmount = Number(dto.insuredAmount) || 0
 
-    console.log('[Upload] Salvando proposta no banco de dados...');
-    return this.proposalService.create(dto);
+    dto.pdfPath = file.path
+    dto.observations = extractedText?.slice(0, 500) || 'Nenhuma observação extraída.'
+    dto.coverages = []
+
+    console.log('[Upload] Salvando proposta no banco de dados...')
+    return this.proposalService.create(dto)
   }
 }
