@@ -50,28 +50,32 @@ export class UploadProposalController {
       throw new BadRequestException('Arquivo PDF não enviado.')
     }
 
-    console.log('[Upload] Iniciando leitura com Google Vision...')
+    console.log('\n[Upload] Iniciando leitura com Google Vision...')
     const extractedText = await this.visionService.extractTextFromPDF(file.path)
     console.log('[Vision] ✅ Texto extraído com sucesso!')
     console.log('[Vision] 🔤 Texto extraído completo:\n', extractedText)
 
-    // (Opcional) Salvar texto em arquivo para depuração futura
+    // 🔍 Salva uma cópia do texto extraído para debug futuro
     const txtPath = `./uploads/extracted-text/${uuid()}.txt`
     fs.mkdirSync(path.dirname(txtPath), { recursive: true })
     fs.writeFileSync(txtPath, extractedText || '')
     console.log(`[Vision] 💾 Texto salvo para análise em: ${txtPath}`)
 
-    // Conversão segura de valores
+    // ✅ Conversão segura dos campos numéricos
     dto.totalPremium = Number(dto.totalPremium) || 0
     dto.insuredAmount = Number(dto.insuredAmount) || 0
     dto.pdfPath = file.path
+
+    // 🧠 Observações com fallback
     dto.observations =
       extractedText && extractedText.trim().length > 0
         ? extractedText.slice(0, 500)
         : 'Texto extraído estava vazio ou ilegível.'
+
+    // 🧩 Coberturas vazias por enquanto
     dto.coverages = []
 
-    console.log('[Upload] Salvando proposta no banco de dados...')
+    console.log('[Upload] 💾 Salvando proposta no banco de dados...')
     return this.proposalService.create(dto)
   }
 }
