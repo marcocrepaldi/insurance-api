@@ -12,7 +12,6 @@ export class GoogleVisionService {
   constructor() {
     const credentialsPath = path.resolve(__dirname, '../../../../tmp/gcp-key.json')
 
-    // Garante que as credenciais existam
     if (!fs.existsSync(credentialsPath)) {
       const base64 = process.env.GOOGLE_VISION_CREDENTIALS_BASE64
 
@@ -36,31 +35,33 @@ export class GoogleVisionService {
     this.client = new ImageAnnotatorClient({ keyFilename: credentialsPath })
   }
 
-  async extractTextFromPDF(filePath: string): Promise<string> {
+  async extractTextWithDebug(filePath: string): Promise<{
+    extractedText: string
+    visionResultJson: any
+  }> {
     if (!fs.existsSync(filePath)) {
-      console.error('[Vision] ❌ Arquivo não encontrado:', filePath)
       throw new InternalServerErrorException('Arquivo PDF não encontrado para leitura.')
     }
 
     try {
-      const fileSize = fs.statSync(filePath).size
-      console.log('[Vision] 📦 Tamanho do arquivo PDF:', fileSize, 'bytes')
-
-      console.log('[Vision] 🔍 Iniciando leitura com Google Vision:', filePath)
+      console.log('[Vision] 🔍 Lendo PDF com Google Vision:', filePath)
       const [result] = await this.client.documentTextDetection(filePath)
 
       const extracted = result.fullTextAnnotation?.text || ''
       console.log('[Vision] ✅ Texto extraído com sucesso!')
-      console.log('[Vision] 🔤 Primeiros 300 caracteres:\n', extracted.slice(0, 300))
+      console.log('[Vision] 🔤 Primeiros caracteres:\n', extracted.slice(0, 300))
 
-      // Salvar JSON completo do resultado para análise
+      // Salva JSON completo para depuração
       const debugDir = './uploads/extracted-debug'
       fs.mkdirSync(debugDir, { recursive: true })
       const debugPath = path.join(debugDir, `${uuid()}-vision.json`)
       fs.writeFileSync(debugPath, JSON.stringify(result, null, 2))
-      console.log('[Vision] 💾 JSON salvo para depuração em:', debugPath)
+      console.log('[Vision] 💾 JSON bruto salvo em:', debugPath)
 
-      return extracted
+      return {
+        extractedText: extracted,
+        visionResultJson: result,
+      }
     } catch (error) {
       console.error('[Vision] ❌ Erro ao processar PDF com Vision API:', error)
       throw new InternalServerErrorException('Erro ao processar PDF com Google Vision.')

@@ -51,11 +51,13 @@ export class UploadProposalController {
     }
 
     console.log('\n[Upload] Iniciando leitura com Google Vision...')
-    const extractedText = await this.visionService.extractTextFromPDF(file.path)
-    console.log('[Vision] ✅ Texto extraído com sucesso!')
-    console.log('[Vision] 🔤 Texto extraído completo:\n', extractedText)
+    const { extractedText, visionResultJson } =
+      await this.visionService.extractTextWithDebug(file.path)
 
-    // 🔍 Salva uma cópia do texto extraído para debug futuro
+    console.log('[Vision] ✅ Texto extraído com sucesso!')
+    console.log('[Vision] 🔤 Texto extraído (início):\n', extractedText.slice(0, 300))
+
+    // 🔍 Salva o texto em arquivo
     const txtPath = `./uploads/extracted-text/${uuid()}.txt`
     fs.mkdirSync(path.dirname(txtPath), { recursive: true })
     fs.writeFileSync(txtPath, extractedText || '')
@@ -72,10 +74,16 @@ export class UploadProposalController {
         ? extractedText.slice(0, 500)
         : 'Texto extraído estava vazio ou ilegível.'
 
-    // 🧩 Coberturas vazias por enquanto
     dto.coverages = []
 
     console.log('[Upload] 💾 Salvando proposta no banco de dados...')
-    return this.proposalService.create(dto)
+    const proposal = await this.proposalService.create(dto)
+
+    // ✅ Retorna a proposta + debug
+    return {
+      proposal,
+      extractedText,
+      visionResultJson,
+    }
   }
 }
