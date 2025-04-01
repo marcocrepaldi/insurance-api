@@ -1,80 +1,84 @@
-// src/insurance-quote/services/google-vision.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common'
-import { ImageAnnotatorClient } from '@google-cloud/vision'
-import * as fs from 'fs'
-import * as path from 'path'
-import * as os from 'os'
+import {
+  Controller,
+  Post,
+  UploadedFile,
+  UseInterceptors,
+  Body,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { GoogleVisionService } from '../services/google-vision.service'
+import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto'
+import { InsuranceProposalService } from '../services/insurance-proposal.service'
+import { diskStorage } from 'multer'
 import { v4 as uuid } from 'uuid'
-import { PdfConverter } from 'pdf-poppler'
+import * as path from 'path'
+import * as fs from 'fs'
+import { AuthGuard } from '@nestjs/passport'
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 
-@Injectable()
-export class GoogleVisionService {
-  private client: ImageAnnotatorClient
+@ApiTags('insurance-proposals')
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
+@Controller('insurance-quotes/proposals')
+export class UploadProposalController {
+  constructor(
+    private readonly visionService: GoogleVisionService,
+    private readonly proposalService: InsuranceProposalService,
+  ) {}
 
-  constructor() {
-    const credentialsPath = path.resolve(__dirname, '../../../../tmp/gcp-key.json')
-
-    if (!fs.existsSync(credentialsPath)) {
-      const base64 = process.env.GOOGLE_VISION_CREDENTIALS_BASE64
-
-      if (!base64) {
-        throw new Error('A variável de ambiente GOOGLE_VISION_CREDENTIALS_BASE64 está ausente.')
-      }
-
-      try {
-        const decoded = Buffer.from(base64, 'base64').toString('utf-8')
-        fs.mkdirSync(path.dirname(credentialsPath), { recursive: true })
-        fs.writeFileSync(credentialsPath, decoded)
-        console.log('[Vision] ✅ Credenciais geradas com sucesso:', credentialsPath)
-      } catch (err) {
-        console.error('[Vision] ❌ Falha ao escrever credenciais:', err)
-        throw new InternalServerErrorException('Erro ao criar o arquivo de credenciais do Google Vision.')
-      }
+  @Post('upload')
+  @ApiOperation({ summary: 'Fazer upload de proposta em PDF e processar com IA' })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/proposals',
+        filename: (req, file, cb) => {
+          const ext = path.extname(file.originalname)
+          cb(null, `${uuid()}${ext}`)
+        },
+      }),
+    }),
+  )
+  async uploadAndProcess(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: CreateInsuranceProposalDto,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('Arquivo PDF não enviado.')
     }
 
-    this.client = new ImageAnnotatorClient({ keyFilename: credentialsPath })
-  }
+    console.log('\n[Upload] Iniciando leitura com Google Vision...')
+    const extractedText = await this.visionService.extractTextFromPDF(file.path)
+    console.log('[Vision] ✅ Texto extraído com sucesso!')
+    console.log('[Vision] 🔤 Texto extraído completo:\n', extractedText)
 
-  async extractTextFromPDF(filePath: string): Promise<string> {
-    if (!fs.existsSync(filePath)) {
-      throw new InternalServerErrorException('Arquivo PDF não encontrado para leitura.')
-    }
+    // 🔍 Salva uma cópia do texto extraído (opcional para debug)
+    const txtPath = `./uploads/extracted-text/${uuid()}.txt`
+    fs.mkdirSync(path.dirname(txtPath), { recursive: true })
+    fs.writeFileSync(txtPath, extractedText || '')
+    console.log(`[Vision] 💾 Texto salvo para análise em: ${txtPath}`)
 
-    try {
-      console.log('[Vision] 🧩 Convertendo PDF em imagens...')
-      const outputDir = path.join(os.tmpdir(), uuid())
-      fs.mkdirSync(outputDir, { recursive: true })
+    // ✅ Conversão segura dos campos
+    dto.totalPremium = Number(dto.totalPremium) || 0
+    dto.insuredAmount = Number(dto.insuredAmount) || 0
+    dto.pdfPath = file.path
 
-      const converter = new PdfConverter(filePath)
-      await converter.convert(outputDir, {
-        format: 'jpeg',
-        out_prefix: 'page',
-        page: null, // todas as páginas
-      })
+    // 🧠 Observações com fallback
+    dto.observations =
+      extractedText && extractedText.trim().length > 0
+        ? extractedText.slice(0, 500)
+        : 'Texto extraído estava vazio ou ilegível.'
 
-      const files = fs.readdirSync(outputDir).filter((f) => f.endsWith('.jpg'))
-      if (files.length === 0) {
-        throw new Error('Nenhuma imagem foi gerada a partir do PDF.')
-      }
+    dto.coverages = [] // pode ser preenchido futuramente com IA
 
-      console.log(`[Vision] 📄 ${files.length} página(s) convertidas.`)
+    console.log('[Upload] 💾 Salvando proposta no banco de dados...')
+    const proposal = await this.proposalService.create(dto)
 
-      let finalText = ''
-
-      for (const file of files) {
-        const imagePath = path.join(outputDir, file)
-        console.log(`[Vision] 🔍 Lendo imagem: ${imagePath}`)
-
-        const [result] = await this.client.textDetection(imagePath)
-        const text = result.fullTextAnnotation?.text || ''
-        finalText += '\n' + text
-      }
-
-      console.log('[Vision] ✅ OCR finalizado com sucesso.')
-      return finalText.trim()
-    } catch (error) {
-      console.error('[Vision] ❌ Erro ao converter ou ler PDF:', error)
-      throw new InternalServerErrorException('Erro ao processar PDF com Google Vision.')
+    return {
+      proposal,
+      extractedText,
     }
   }
 }
