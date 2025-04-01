@@ -12,44 +12,44 @@ import { Producer } from '../../producers/entities/producer.entity'
 export class InsuranceQuoteService {
   constructor(
     @InjectRepository(InsuranceQuote)
-    private quoteRepo: Repository<InsuranceQuote>,
+    private readonly quoteRepository: Repository<InsuranceQuote>,
 
     @InjectRepository(Client)
-    private clientRepo: Repository<Client>,
+    private readonly clientRepository: Repository<Client>,
 
     @InjectRepository(Producer)
-    private producerRepo: Repository<Producer>,
+    private readonly producerRepository: Repository<Producer>,
   ) {}
 
   async create(dto: CreateInsuranceQuoteDto): Promise<InsuranceQuote> {
-    const client = await this.clientRepo.findOneBy({ id: dto.clientId })
+    const client = await this.clientRepository.findOneBy({ id: dto.clientId })
     if (!client) {
       throw new NotFoundException(`Cliente com ID ${dto.clientId} não encontrado.`)
     }
 
-    const producer = await this.producerRepo.findOneBy({ id: dto.producerId })
+    const producer = await this.producerRepository.findOneBy({ id: dto.producerId })
     if (!producer) {
       throw new NotFoundException(`Produtor com ID ${dto.producerId} não encontrado.`)
     }
 
-    const quote = this.quoteRepo.create({
+    const quote = this.quoteRepository.create({
       ...dto,
       client,
       producer,
     })
 
-    return this.quoteRepo.save(quote)
+    return this.quoteRepository.save(quote)
   }
 
   async findAll(): Promise<InsuranceQuote[]> {
-    return this.quoteRepo.find({
+    return this.quoteRepository.find({
       relations: ['client', 'producer', 'proposals'],
       order: { createdAt: 'DESC' },
     })
   }
 
   async findOne(id: string): Promise<InsuranceQuote> {
-    const quote = await this.quoteRepo.findOne({
+    const quote = await this.quoteRepository.findOne({
       where: { id },
       relations: ['client', 'producer', 'proposals'],
     })
@@ -64,11 +64,11 @@ export class InsuranceQuoteService {
   async update(id: string, dto: UpdateInsuranceQuoteDto): Promise<InsuranceQuote> {
     const quote = await this.findOne(id)
     Object.assign(quote, dto)
-    return this.quoteRepo.save(quote)
+    return this.quoteRepository.save(quote)
   }
 
   async remove(id: string): Promise<{ deleted: boolean }> {
-    const result = await this.quoteRepo.delete(id)
+    const result = await this.quoteRepository.delete(id)
 
     if (result.affected === 0) {
       throw new NotFoundException(`Cotação com ID ${id} não encontrada para exclusão.`)

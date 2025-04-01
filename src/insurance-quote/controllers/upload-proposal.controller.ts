@@ -6,6 +6,7 @@ import {
   UseInterceptors,
   Body,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { GoogleVisionService } from '../services/google-vision.service'
@@ -15,7 +16,7 @@ import { diskStorage } from 'multer'
 import { v4 as uuid } from 'uuid'
 import * as path from 'path'
 import { AuthGuard } from '@nestjs/passport'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
 
 @ApiTags('insurance-proposals')
 @ApiBearerAuth()
@@ -28,6 +29,7 @@ export class UploadProposalController {
   ) {}
 
   @Post('upload')
+  @ApiOperation({ summary: 'Fazer upload de proposta em PDF e processar com IA' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -42,12 +44,16 @@ export class UploadProposalController {
   async uploadAndProcess(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: CreateInsuranceProposalDto,
-  ) {
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('Arquivo PDF não enviado.')
+    }
+
     console.log('[Upload] Iniciando leitura com Google Vision...')
     const extractedText = await this.visionService.extractTextFromPDF(file.path)
     console.log('[Upload] Texto extraído com sucesso!')
 
-    // ✅ Conversão segura de campos numéricos vindos do formulário
+    // Conversão segura de valores
     dto.totalPremium = Number(dto.totalPremium) || 0
     dto.insuredAmount = Number(dto.insuredAmount) || 0
 

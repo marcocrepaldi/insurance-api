@@ -11,30 +11,32 @@ import { InsuranceQuote } from '../entities/insurance-quote.entity'
 export class InsuranceProposalService {
   constructor(
     @InjectRepository(InsuranceProposal)
-    private proposalRepo: Repository<InsuranceProposal>,
+    private readonly proposalRepository: Repository<InsuranceProposal>,
+
     @InjectRepository(InsuranceQuote)
-    private quoteRepo: Repository<InsuranceQuote>,
+    private readonly quoteRepository: Repository<InsuranceQuote>,
   ) {}
 
   async create(dto: CreateInsuranceProposalDto): Promise<InsuranceProposal> {
-    const quote = await this.quoteRepo.findOneByOrFail({ id: dto.quoteId })
+    const quote = await this.quoteRepository.findOneByOrFail({ id: dto.quoteId })
 
-    const proposal = this.proposalRepo.create({
+    const proposal = this.proposalRepository.create({
       ...dto,
       quote,
     })
 
-    return this.proposalRepo.save(proposal)
+    return this.proposalRepository.save(proposal)
   }
 
   async findAllByQuote(quoteId: string): Promise<InsuranceProposal[]> {
-    return this.proposalRepo.find({
+    return this.proposalRepository.find({
       where: { quote: { id: quoteId } },
+      relations: ['quote'],
     })
   }
 
   async findOne(id: string): Promise<InsuranceProposal> {
-    const proposal = await this.proposalRepo.findOne({
+    const proposal = await this.proposalRepository.findOne({
       where: { id },
       relations: ['quote'],
     })
@@ -49,14 +51,16 @@ export class InsuranceProposalService {
   async update(id: string, dto: UpdateInsuranceProposalDto): Promise<InsuranceProposal> {
     const proposal = await this.findOne(id)
     Object.assign(proposal, dto)
-    return await this.proposalRepo.save(proposal)
+    return this.proposalRepository.save(proposal)
   }
 
   async remove(id: string): Promise<{ deleted: boolean }> {
-    const result = await this.proposalRepo.delete(id)
+    const result = await this.proposalRepository.delete(id)
+
     if (result.affected === 0) {
       throw new NotFoundException(`Proposta com ID ${id} não encontrada para exclusão.`)
     }
+
     return { deleted: true }
   }
 }

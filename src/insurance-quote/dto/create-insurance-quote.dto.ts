@@ -1,3 +1,4 @@
+// src/insurance-quote/dto/create-insurance-quote.dto.ts
 import {
   IsEnum,
   IsNotEmpty,
@@ -9,6 +10,7 @@ import {
   IsDateString,
 } from 'class-validator'
 import { QuoteStage } from '../entities/insurance-quote.entity'
+import { Transform } from 'class-transformer'
 
 export class CreateInsuranceQuoteDto {
   @IsNotEmpty()
@@ -32,6 +34,7 @@ export class CreateInsuranceQuoteDto {
   expectedDecisionDate?: Date
 
   @IsOptional()
+  @Transform(({ value }) => parseFloat(value))
   @IsNumber()
   expectedPremium?: number
 

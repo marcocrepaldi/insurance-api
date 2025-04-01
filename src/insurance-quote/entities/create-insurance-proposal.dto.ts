@@ -1,5 +1,26 @@
 // src/insurance-quote/dto/create-insurance-proposal.dto.ts
-import { IsUUID, IsNotEmpty, IsNumber, IsString, IsOptional, IsArray } from 'class-validator'
+import {
+  IsUUID,
+  IsNotEmpty,
+  IsNumber,
+  IsString,
+  IsOptional,
+  IsArray,
+  ValidateNested,
+} from 'class-validator'
+import { Type } from 'class-transformer'
+
+class CoverageDto {
+  @IsString()
+  name: string
+
+  @IsNumber()
+  value: number
+
+  @IsOptional()
+  @IsString()
+  deductible?: string
+}
 
 export class CreateInsuranceProposalDto {
   @IsUUID()
@@ -25,9 +46,7 @@ export class CreateInsuranceProposalDto {
 
   @IsOptional()
   @IsArray()
-  coverages?: {
-    name: string
-    value: number
-    deductible?: string
-  }[]
+  @ValidateNested({ each: true })
+  @Type(() => CoverageDto)
+  coverages?: CoverageDto[]
 }
