@@ -1,4 +1,3 @@
-// src/insurance-quote/services/insurance-quote.service.ts
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -7,6 +6,7 @@ import { CreateInsuranceQuoteDto } from '../dto/create-insurance-quote.dto'
 import { UpdateInsuranceQuoteDto } from '../dto/update-insurance-quote.dto'
 import { Client } from '../../clients/entities/client.entity'
 import { Producer } from '../../producers/entities/producer.entity'
+import { User } from '../../users/entities/user.entity'
 
 @Injectable()
 export class InsuranceQuoteService {
@@ -19,9 +19,12 @@ export class InsuranceQuoteService {
 
     @InjectRepository(Producer)
     private readonly producerRepository: Repository<Producer>,
+
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
   ) {}
 
-  async create(dto: CreateInsuranceQuoteDto): Promise<InsuranceQuote> {
+  async create(dto: CreateInsuranceQuoteDto, user: User): Promise<InsuranceQuote> {
     const client = await this.clientRepository.findOneBy({ id: dto.clientId })
     if (!client) {
       throw new NotFoundException(`Cliente com ID ${dto.clientId} não encontrado.`)
@@ -36,6 +39,7 @@ export class InsuranceQuoteService {
       ...dto,
       client,
       producer,
+      createdBy: user,
     })
 
     return this.quoteRepository.save(quote)
@@ -43,7 +47,7 @@ export class InsuranceQuoteService {
 
   async findAll(): Promise<InsuranceQuote[]> {
     return this.quoteRepository.find({
-      relations: ['client', 'producer', 'proposals'],
+      relations: ['client', 'producer', 'proposals', 'createdBy'],
       order: { createdAt: 'DESC' },
     })
   }
@@ -51,7 +55,7 @@ export class InsuranceQuoteService {
   async findOne(id: string): Promise<InsuranceQuote> {
     const quote = await this.quoteRepository.findOne({
       where: { id },
-      relations: ['client', 'producer', 'proposals'],
+      relations: ['client', 'producer', 'proposals', 'createdBy'],
     })
 
     if (!quote) {

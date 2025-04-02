@@ -1,4 +1,3 @@
-// src/insurance-quote/entities/insurance-quote.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -8,10 +7,11 @@ import {
   ManyToOne,
   JoinColumn,
   OneToMany,
-} from 'typeorm'
-import { Client } from '../../clients/entities/client.entity'
-import { Producer } from '../../producers/entities/producer.entity'
-import { InsuranceProposal } from './insurance-proposal.entity'
+} from 'typeorm';
+import { Client } from '../../clients/entities/client.entity';
+import { Producer } from '../../producers/entities/producer.entity';
+import { InsuranceProposal } from './insurance-proposal.entity';
+import { User } from '../../users/entities/user.entity';
 
 export enum QuoteStage {
   ABERTURA = 'ABERTURA',
@@ -26,52 +26,53 @@ export enum QuoteStage {
 @Entity('insurance_quotes')
 export class InsuranceQuote {
   @PrimaryGeneratedColumn('uuid')
-  id: string
+  id: string;
 
   @Column()
-  title: string
+  title: string;
 
   @Column({ type: 'text', nullable: true })
-  description: string
+  description: string;
 
   @Column({
     type: 'enum',
     enum: QuoteStage,
     default: QuoteStage.ABERTURA,
   })
-  stage: QuoteStage
+  stage: QuoteStage;
 
   @Column({ type: 'timestamp', nullable: true })
-  proposalSentAt: Date
+  proposalSentAt: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  expectedDecisionDate: Date
+  expectedDecisionDate: Date;
 
   @Column({ type: 'float', nullable: true })
-  expectedPremium: number
+  expectedPremium: number;
 
   @Column({ type: 'jsonb', nullable: true })
-  suggestedProducts: string[]
+  suggestedProducts: string[];
 
   @ManyToOne(() => Client, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'client_id' })
-  client: Client
+  client: Client;
 
   @ManyToOne(() => Producer, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'producer_id' })
-  producer: Producer
+  producer: Producer;
 
-  @Column({ nullable: true })
-  createdBy: string
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'created_by' })
+  createdBy: User;
 
   @OneToMany(() => InsuranceProposal, (proposal) => proposal.quote, {
     cascade: true,
   })
-  proposals: InsuranceProposal[]
+  proposals: InsuranceProposal[];
 
   @CreateDateColumn({ name: 'created_at' })
-  createdAt: Date
+  createdAt: Date;
 
   @UpdateDateColumn({ name: 'updated_at' })
-  updatedAt: Date
+  updatedAt: Date;
 }
