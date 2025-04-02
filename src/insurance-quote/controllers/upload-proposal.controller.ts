@@ -30,7 +30,9 @@ export class UploadProposalController {
   ) {}
 
   @Post('upload')
-  @ApiOperation({ summary: 'Fazer upload de proposta em PDF e processar com IA' })
+  @ApiOperation({
+    summary: 'Fazer upload de proposta (imagem ou PDF) e processar com Google Vision',
+  })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
@@ -47,39 +49,32 @@ export class UploadProposalController {
     @Body() dto: CreateInsuranceProposalDto,
   ): Promise<any> {
     if (!file) {
-      throw new BadRequestException('Arquivo PDF não enviado.')
+      throw new BadRequestException('Arquivo não enviado.')
     }
 
-    console.log('\n[Upload] Iniciando leitura com Google Vision...')
+    console.log('\n[Upload] 🧠 Enviando arquivo para análise...')
     const { extractedText, visionResultJson } =
       await this.visionService.extractTextWithDebug(file.path)
 
-    console.log('[Vision] ✅ Texto extraído com sucesso!')
-    console.log('[Vision] 🔤 Texto extraído (início):\n', extractedText.slice(0, 300))
+    console.log('[Upload] ✅ Análise concluída.')
+    console.log('[Upload] 📝 Trecho do texto extraído:\n', extractedText.slice(0, 300))
 
-    // 🔍 Salva o texto em arquivo
-    const txtPath = `./uploads/extracted-text/${uuid()}.txt`
-    fs.mkdirSync(path.dirname(txtPath), { recursive: true })
-    fs.writeFileSync(txtPath, extractedText || '')
-    console.log(`[Vision] 💾 Texto salvo para análise em: ${txtPath}`)
-
-    // ✅ Conversão segura dos campos numéricos
+    // 🔒 Garante valores seguros e consistentes
     dto.totalPremium = Number(dto.totalPremium) || 0
     dto.insuredAmount = Number(dto.insuredAmount) || 0
     dto.pdfPath = file.path
+    dto.coverages = []
 
-    // 🧠 Observações com fallback
+    // ✍️ Observações a partir do OCR
     dto.observations =
       extractedText && extractedText.trim().length > 0
         ? extractedText.slice(0, 500)
         : 'Texto extraído estava vazio ou ilegível.'
 
-    dto.coverages = []
-
-    console.log('[Upload] 💾 Salvando proposta no banco de dados...')
+    // 💾 Persistência no banco
     const proposal = await this.proposalService.create(dto)
 
-    // ✅ Retorna a proposta + debug
+    // 📤 Retorno completo com proposta + texto + debug JSON
     return {
       proposal,
       extractedText,
