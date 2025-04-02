@@ -6,6 +6,7 @@ import { InsuranceQuote } from './entities/insurance-quote.entity'
 import { InsuranceProposal } from './entities/insurance-proposal.entity'
 import { Client } from '../clients/entities/client.entity'
 import { Producer } from '../producers/entities/producer.entity'
+import { User } from '../users/entities/user.entity' // ✅ IMPORTANTE
 
 // ⚙️ Serviços
 import { InsuranceQuoteService } from './services/insurance-quote.service'
@@ -24,6 +25,7 @@ import { UploadProposalController } from './controllers/upload-proposal.controll
       InsuranceProposal,
       Client,
       Producer,
+      User
     ]),
   ],
   controllers: [
