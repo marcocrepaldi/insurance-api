@@ -29,17 +29,15 @@ export class InsuranceProposalController {
   // 📄 Rota para download do PDF da proposta
   @Get('pdf/:filename')
   @ApiOperation({ summary: 'Download do PDF da proposta' })
-  async downloadPdf(
-    @Param('filename') filename: string,
-    @Res() res: Response,
-  ) {
-    const filePath = path.join(process.cwd(), 'uploads/proposals', filename)
+  async downloadPdf(@Param('filename') filename: string, @Res() res: Response) {
+    const sanitizedFilename = path.basename(filename) // evita path traversal
+    const filePath = path.join(process.cwd(), 'uploads/proposals', sanitizedFilename)
 
     if (!fs.existsSync(filePath)) {
       throw new NotFoundException('Arquivo PDF não encontrado.')
     }
 
-    return res.download(filePath)
+    return res.download(filePath, sanitizedFilename)
   }
 
   // 🔍 Buscar uma proposta por ID

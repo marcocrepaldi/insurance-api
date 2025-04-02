@@ -4,7 +4,7 @@ import { ImageAnnotatorClient } from '@google-cloud/vision'
 import * as fs from 'fs'
 import * as path from 'path'
 import * as mime from 'mime-types'
-import * as pdf2img from 'pdf-img-convert'
+import { fromPath } from 'pdf2pic'
 import { v4 as uuid } from 'uuid'
 
 @Injectable()
@@ -52,15 +52,23 @@ export class GoogleVisionService {
         const outputDir = path.join('./uploads/temp-images', uuid())
         fs.mkdirSync(outputDir, { recursive: true })
 
-        const images = await pdf2img.convert(filePath)
-        if (!images.length) throw new Error('Nenhuma imagem gerada a partir do PDF.')
+        const convert = fromPath(filePath, {
+          density: 150,
+          saveFilename: 'page',
+          savePath: outputDir,
+          format: 'png',
+        })
 
-        console.log(`[Vision] 📄 ${images.length} página(s) convertidas.`)
+        const totalPages = 5 // limite de segurança para evitar sobrecarga
+        const results = await Promise.all(
+          Array.from({ length: totalPages }, (_, i) => convert(i + 1))
+        )
 
-        for (const [index, imageBuffer] of images.entries()) {
-          const tempImagePath = path.join(outputDir, `page-${index + 1}.png`)
-          fs.writeFileSync(tempImagePath, imageBuffer)
-          const [result] = await this.client.textDetection(tempImagePath)
+        for (const [index, page] of results.entries()) {
+          const imagePath = page.path
+          console.log(`[Vision] 🖼️ Página ${index + 1} convertida:`, imagePath)
+
+          const [result] = await this.client.textDetection(imagePath)
           const text = result.fullTextAnnotation?.text || ''
           extractedText += '\n' + text
           fullResult[`page_${index + 1}`] = result
@@ -75,7 +83,6 @@ export class GoogleVisionService {
       console.log('[Vision] ✅ Texto extraído com sucesso.')
       console.log('[Vision] 🔤 Texto (prévia):\n', extractedText.slice(0, 300))
 
-      // Salvar JSON bruto para depuração
       const debugDir = './uploads/extracted-debug'
       fs.mkdirSync(debugDir, { recursive: true })
       const debugFilePath = path.join(debugDir, `${uuid()}-vision.json`)
