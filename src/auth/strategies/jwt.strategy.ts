@@ -13,20 +13,22 @@ interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(private readonly configService: ConfigService) {
+    // Verifique se a chave JWT_SECRET está presente na configuração antes de inicializar a estratégia
+    const jwtSecret = configService.get<string>('JWT_SECRET')
+    if (!jwtSecret) {
+      throw new Error('JWT_SECRET não está definido nas variáveis de ambiente.')
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: jwtSecret,
     })
-
-    if (!configService.get('JWT_SECRET')) {
-      throw new Error('JWT_SECRET não está definido nas variáveis de ambiente.')
-    }
   }
 
   async validate(payload: JwtPayload) {
-    if (!payload || !payload.userId) {
-      throw new UnauthorizedException('Token inválido.')
+    if (!payload || !payload.userId || !payload.role) {
+      throw new UnauthorizedException('Token inválido ou malformado.')
     }
 
     return {
@@ -34,7 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       name: payload.name,
       email: payload.email,
       role: {
-        name: payload.role,
+        name: payload.role, // role como string, garantindo que seja retornada corretamente
       },
     }
   }
