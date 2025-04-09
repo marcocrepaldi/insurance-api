@@ -1,61 +1,111 @@
-// src/insurance-quote/controllers/insurance-proposal.controller.ts
 import {
   Controller,
-  Get,
-  Param,
-  Patch,
+  Post,
+  UploadedFile,
+  UseInterceptors,
   Body,
   UseGuards,
-  ParseUUIDPipe,
-  Res,
-  NotFoundException,
+  BadRequestException,
 } from '@nestjs/common'
-import { Response } from 'express'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { GoogleVisionService } from '../services/google-vision.service'
+import { CreateInsuranceProposalDto } from '../dto/create-insurance-proposal.dto'
 import { InsuranceProposalService } from '../services/insurance-proposal.service'
-import { UpdateInsuranceProposalDto } from '../dto/update-insurance-proposal.dto'
+import { diskStorage } from 'multer'
+import { v4 as uuid } from 'uuid'
+import * as path from 'path'
+import * as fs from 'fs'
 import { AuthGuard } from '@nestjs/passport'
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
-import { InsuranceProposal } from '../entities/insurance-proposal.entity'
-import * as fs from 'fs'
-import * as path from 'path'
+import { fromPath } from 'pdf2pic'
 
 @ApiTags('insurance-proposals')
 @ApiBearerAuth()
 @UseGuards(AuthGuard('jwt'))
 @Controller('insurance-quotes/proposals')
-export class InsuranceProposalController {
-  constructor(private readonly proposalService: InsuranceProposalService) {}
+export class UploadProposalController {
+  constructor(
+    private readonly visionService: GoogleVisionService,
+    private readonly proposalService: InsuranceProposalService,
+  ) {}
 
-  // 📄 Rota para download do PDF da proposta
-  @Get('pdf/:filename')
-  @ApiOperation({ summary: 'Download do PDF da proposta' })
-  async downloadPdf(@Param('filename') filename: string, @Res() res: Response) {
-    const sanitizedFilename = path.basename(filename) // evita path traversal
-    const filePath = path.join(process.cwd(), 'uploads/proposals', sanitizedFilename)
-
-    if (!fs.existsSync(filePath)) {
-      throw new NotFoundException('Arquivo PDF não encontrado.')
+  @Post('upload')
+  @ApiOperation({
+    summary: 'Fazer upload de proposta (imagem ou PDF) e processar com Google Vision',
+  })
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/proposals',
+        filename: (req, file, cb) => {
+          const ext = path.extname(file.originalname)
+          cb(null, `${uuid()}${ext}`)
+        },
+      }),
+    }),
+  )
+  async uploadAndProcess(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: CreateInsuranceProposalDto,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('Arquivo não enviado.')
     }
 
-    return res.download(filePath, sanitizedFilename)
-  }
+    console.log('\n[Upload] 🧠 Verificando tipo de arquivo...')
 
-  // 🔍 Buscar uma proposta por ID
-  @Get(':id')
-  @ApiOperation({ summary: 'Buscar proposta por ID' })
-  findOne(
-    @Param('id', new ParseUUIDPipe()) id: string,
-  ): Promise<InsuranceProposal> {
-    return this.proposalService.findOne(id)
-  }
+    // 🔁 Verifica se é PDF
+    const isPdf = path.extname(file.path).toLowerCase() === '.pdf'
+    let fileForVision = file.path
 
-  // ✏️ Atualizar proposta por ID
-  @Patch(':id')
-  @ApiOperation({ summary: 'Atualizar dados da proposta' })
-  update(
-    @Param('id', new ParseUUIDPipe()) id: string,
-    @Body() dto: UpdateInsuranceProposalDto,
-  ): Promise<InsuranceProposal> {
-    return this.proposalService.update(id, dto)
+    if (isPdf) {
+      console.log('[Upload] 📄 É um PDF. Convertendo para imagem...')
+
+      const outputFolder = path.join(process.cwd(), 'uploads/temp')
+      if (!fs.existsSync(outputFolder)) {
+        fs.mkdirSync(outputFolder, { recursive: true })
+      }
+
+      const converter = fromPath(file.path, {
+        density: 300,
+        saveFilename: `page-${uuid()}`,
+        savePath: outputFolder,
+        format: 'png',
+      })
+
+      const result = await converter(1)
+      fileForVision = result.path
+
+      console.log('[Upload] ✅ PDF convertido em imagem:', fileForVision)
+    }
+
+    console.log('[Upload] 🔍 Enviando imagem para análise com Vision...')
+    const { extractedText, visionResultJson } =
+      await this.visionService.extractTextWithDebug(fileForVision)
+
+    console.log('[Upload] ✅ Análise concluída.')
+    console.log('[Upload] 📝 Trecho do texto extraído:\n', extractedText.slice(0, 300))
+
+    // 🔒 Garante valores seguros e consistentes
+    dto.totalPremium = Number(dto.totalPremium) || 0
+    dto.insuredAmount = Number(dto.insuredAmount) || 0
+    dto.pdfPath = file.path
+    dto.coverages = []
+
+    // ✍️ Observações a partir do OCR
+    dto.observations =
+      extractedText && extractedText.trim().length > 0
+        ? extractedText.slice(0, 500)
+        : 'Texto extraído estava vazio ou ilegível.'
+
+    // 💾 Persistência no banco
+    const proposal = await this.proposalService.create(dto)
+
+    // 📤 Retorno completo com proposta + texto + debug JSON
+    return {
+      proposal,
+      extractedText,
+      visionResultJson,
+    }
   }
 }
