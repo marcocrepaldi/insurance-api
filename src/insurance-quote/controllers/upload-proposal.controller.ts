@@ -1,4 +1,3 @@
-// src/insurance-quote/controllers/upload-proposal.controller.ts
 import {
   Controller,
   Post,
@@ -18,6 +17,7 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { AuthGuard } from '@nestjs/passport'
 import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger'
+import { fromPath } from 'pdf2pic'
 
 @ApiTags('insurance-proposals')
 @ApiBearerAuth()
@@ -52,29 +52,59 @@ export class UploadProposalController {
       throw new BadRequestException('Arquivo não enviado.')
     }
 
-    console.log('\n[Upload] 🧠 Enviando arquivo para análise...')
+    console.log('\n[Upload] 🧠 Verificando tipo de arquivo...')
+
+    // 🔍 Detecta se é PDF
+    const isPdf = path.extname(file.path).toLowerCase() === '.pdf'
+    let fileForVision = file.path
+
+    if (isPdf) {
+      console.log('[Upload] 📄 É um PDF. Iniciando conversão...')
+
+      const outputFolder = path.join(process.cwd(), 'uploads/temp')
+      if (!fs.existsSync(outputFolder)) {
+        fs.mkdirSync(outputFolder, { recursive: true })
+      }
+
+      const converter = fromPath(file.path, {
+        density: 300,
+        saveFilename: `page-${uuid()}`,
+        savePath: outputFolder,
+        format: 'png',
+      })
+
+      try {
+        const result = await converter(1)
+        fileForVision = result.path
+        console.log('[Upload] ✅ PDF convertido em imagem:', fileForVision)
+      } catch (error) {
+        console.error('[Upload] ❌ Erro ao converter PDF para imagem:', error)
+        throw new BadRequestException('Erro ao converter PDF para imagem.')
+      }
+    }
+
+    console.log('[Upload] 🔍 Enviando arquivo para OCR com Vision...')
     const { extractedText, visionResultJson } =
-      await this.visionService.extractTextWithDebug(file.path)
+      await this.visionService.extractTextWithDebug(fileForVision)
 
-    console.log('[Upload] ✅ Análise concluída.')
-    console.log('[Upload] 📝 Trecho do texto extraído:\n', extractedText.slice(0, 300))
+    console.log('[Upload] ✅ OCR concluído.')
+    console.log('[Upload] 📝 Texto extraído (trecho):\n', extractedText.slice(0, 300))
 
-    // 🔒 Garante valores seguros e consistentes
+    // 🔒 Validação e preenchimento seguro
     dto.totalPremium = Number(dto.totalPremium) || 0
     dto.insuredAmount = Number(dto.insuredAmount) || 0
     dto.pdfPath = file.path
     dto.coverages = []
 
-    // ✍️ Observações a partir do OCR
     dto.observations =
       extractedText && extractedText.trim().length > 0
         ? extractedText.slice(0, 500)
         : 'Texto extraído estava vazio ou ilegível.'
 
-    // 💾 Persistência no banco
+    // 💾 Salva proposta no banco
     const proposal = await this.proposalService.create(dto)
 
-    // 📤 Retorno completo com proposta + texto + debug JSON
+    // 🔁 Retorna todos os dados úteis
     return {
       proposal,
       extractedText,

@@ -9,15 +9,15 @@ import {
   UseGuards,
   ParseUUIDPipe,
   Req,
-} from '@nestjs/common';
-import { Request } from 'express';
-import { InsuranceQuoteService } from '../services/insurance-quote.service';
-import { CreateInsuranceQuoteDto } from '../dto/create-insurance-quote.dto';
-import { UpdateInsuranceQuoteDto } from '../dto/update-insurance-quote.dto';
-import { AuthGuard } from '@nestjs/passport';
-import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
-import { InsuranceQuote } from '../entities/insurance-quote.entity';
-import { User } from '../../users/entities/user.entity';
+} from '@nestjs/common'
+import { Request } from 'express'
+import { InsuranceQuoteService } from '../services/insurance-quote.service'
+import { CreateInsuranceQuoteDto } from '../dto/create-insurance-quote.dto'
+import { UpdateInsuranceQuoteDto } from '../dto/update-insurance-quote.dto'
+import { AuthGuard } from '@nestjs/passport'
+import { ApiBearerAuth, ApiTags, ApiOperation, ApiParam } from '@nestjs/swagger'
+import { InsuranceQuote } from '../entities/insurance-quote.entity'
+import { User } from '../../users/entities/user.entity'
 
 @ApiTags('insurance-quotes')
 @ApiBearerAuth()
@@ -32,38 +32,41 @@ export class InsuranceQuoteController {
     @Body() dto: CreateInsuranceQuoteDto,
     @Req() req: Request,
   ): Promise<InsuranceQuote> {
-    const user = req.user as User;
-    return this.service.create(dto, user);
+    const user = req.user as User
+    return this.service.create(dto, user)
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar todas as cotações' })
   findAll(): Promise<InsuranceQuote[]> {
-    return this.service.findAll();
+    return this.service.findAll()
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Buscar cotação por ID' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   findOne(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<InsuranceQuote> {
-    return this.service.findOne(id);
+    return this.service.findOne(id)
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Atualizar cotação' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   update(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInsuranceQuoteDto,
   ): Promise<InsuranceQuote> {
-    return this.service.update(id, dto);
+    return this.service.update(id, dto)
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover cotação' })
+  @ApiParam({ name: 'id', type: 'string', format: 'uuid' })
   remove(
-    @Param('id', new ParseUUIDPipe()) id: string,
+    @Param('id', ParseUUIDPipe) id: string,
   ): Promise<{ deleted: boolean }> {
-    return this.service.remove(id);
+    return this.service.remove(id)
   }
 }

@@ -1,4 +1,3 @@
-// src/insurance-quote/entities/insurance-proposal.entity.ts
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -9,6 +8,12 @@ import {
   JoinColumn,
 } from 'typeorm'
 import { InsuranceQuote } from './insurance-quote.entity'
+
+type Coverage = {
+  name: string
+  value: number
+  deductible?: string
+}
 
 @Entity('insurance_proposals')
 export class InsuranceProposal {
@@ -37,11 +42,7 @@ export class InsuranceProposal {
   pdfPath: string
 
   @Column({ type: 'jsonb', nullable: true })
-  coverages: {
-    name: string
-    value: number
-    deductible?: string
-  }[]
+  coverages: Coverage[]
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date

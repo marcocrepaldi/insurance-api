@@ -1,4 +1,3 @@
-// src/insurance-quote/dto/update-insurance-proposal.dto.ts
 import {
   IsOptional,
   IsString,
@@ -8,7 +7,7 @@ import {
 } from 'class-validator'
 import { Type, Transform } from 'class-transformer'
 
-class CoverageItemDto {
+class CoverageDto {
   @IsString()
   name: string
 
@@ -47,6 +46,6 @@ export class UpdateInsuranceProposalDto {
   @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => CoverageItemDto)
-  coverages?: CoverageItemDto[]
+  @Type(() => CoverageDto)
+  coverages?: CoverageDto[]
 }

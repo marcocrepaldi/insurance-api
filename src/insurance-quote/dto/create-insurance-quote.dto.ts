@@ -1,4 +1,3 @@
-// src/insurance-quote/dto/create-insurance-quote.dto.ts
 import {
   IsEnum,
   IsNotEmpty,
@@ -9,12 +8,12 @@ import {
   IsArray,
   IsDateString,
 } from 'class-validator'
-import { QuoteStage } from '../entities/insurance-quote.entity'
 import { Transform } from 'class-transformer'
+import { QuoteStage } from '../entities/insurance-quote.entity'
 
 export class CreateInsuranceQuoteDto {
-  @IsNotEmpty()
   @IsString()
+  @IsNotEmpty()
   title: string
 
   @IsOptional()
