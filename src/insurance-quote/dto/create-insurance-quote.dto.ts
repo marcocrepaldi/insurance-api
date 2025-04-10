@@ -9,7 +9,7 @@ import {
   IsDateString,
 } from 'class-validator'
 import { Transform } from 'class-transformer'
-import { QuoteStage } from '../entities/insurance-quote.entity'
+import { QuoteStage, QuoteServiceType } from '../entities/insurance-quote.entity'
 
 export class CreateInsuranceQuoteDto {
   @IsString()
@@ -23,6 +23,10 @@ export class CreateInsuranceQuoteDto {
   @IsOptional()
   @IsEnum(QuoteStage)
   stage?: QuoteStage
+
+  @IsEnum(QuoteServiceType)
+  @IsNotEmpty()
+  serviceType: QuoteServiceType
 
   @IsOptional()
   @IsDateString()
