@@ -20,8 +20,10 @@ import {
     @Post()
     create(@Body() dto: CreateProposalLogDto, @Req() req: Request) {
       const userId = req.user?.id
+      console.log('payload:', dto, 'userId:', userId)
       return this.service.create(dto, userId)
     }
+    
   
     @Get('proposal/:proposalId')
     findAllByProposal(@Param('proposalId') proposalId: string) {
