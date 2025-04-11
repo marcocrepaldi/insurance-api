@@ -6,8 +6,10 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  OneToMany,
 } from 'typeorm'
 import { InsuranceQuote } from './insurance-quote.entity'
+import { ProposalLog } from './proposal-log.entity'
 
 type Coverage = {
   name: string
@@ -43,6 +45,9 @@ export class InsuranceProposal {
 
   @Column({ type: 'jsonb', nullable: true })
   coverages: Coverage[]
+
+  @OneToMany(() => ProposalLog, (log) => log.proposal, { cascade: true })
+  logs: ProposalLog[]
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date
