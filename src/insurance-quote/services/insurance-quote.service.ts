@@ -35,11 +35,15 @@ export class InsuranceQuoteService {
       throw new NotFoundException(`Produtor com ID ${dto.producerId} não encontrado.`)
     }
 
+    // Validação opcional: você pode validar o conteúdo de dto.serviceDetails aqui
+    // com base no dto.serviceType usando alguma lib como Zod
+
     const quote = this.quoteRepository.create({
       ...dto,
       client,
       producer,
       createdBy: user,
+      serviceDetails: dto.serviceDetails ?? {}, // garante que é um objeto mesmo se vier undefined
     })
 
     return this.quoteRepository.save(quote)
@@ -67,7 +71,14 @@ export class InsuranceQuoteService {
 
   async update(id: string, dto: UpdateInsuranceQuoteDto): Promise<InsuranceQuote> {
     const quote = await this.findOne(id)
-    Object.assign(quote, dto)
+
+    // Você pode também fazer validação específica aqui se dto.serviceDetails estiver presente
+
+    Object.assign(quote, {
+      ...dto,
+      serviceDetails: dto.serviceDetails ?? quote.serviceDetails,
+    })
+
     return this.quoteRepository.save(quote)
   }
 

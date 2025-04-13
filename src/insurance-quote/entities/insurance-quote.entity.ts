@@ -113,6 +113,10 @@ export class InsuranceQuote {
   @Column({ type: 'jsonb', nullable: true })
   suggestedProducts: string[]
 
+  // 👇 NOVO CAMPO para armazenar os dados específicos do tipo de produto
+  @Column({ type: 'jsonb', nullable: true })
+  serviceDetails: Record<string, any>
+
   @ManyToOne(() => Client, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'client_id' })
   client: Client

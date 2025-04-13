@@ -46,8 +46,9 @@ import {
     @CreateDateColumn()
     createdAt: Date
   
-    @ManyToOne(() => User, { eager: true })
+    @ManyToOne(() => User, { eager: true, nullable: true })
     @JoinColumn({ name: 'createdBy' })
     createdBy: User
+    
   }
   

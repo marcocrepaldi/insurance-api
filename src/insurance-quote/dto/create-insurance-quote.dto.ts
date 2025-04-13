@@ -7,8 +7,10 @@ import {
   IsNumber,
   IsArray,
   IsDateString,
+  ValidateNested,
+  IsObject,
 } from 'class-validator'
-import { Transform } from 'class-transformer'
+import { Transform, Type } from 'class-transformer'
 import { QuoteStage, QuoteServiceType } from '../entities/insurance-quote.entity'
 
 export class CreateInsuranceQuoteDto {
@@ -55,4 +57,9 @@ export class CreateInsuranceQuoteDto {
   @IsOptional()
   @IsUUID()
   createdBy?: string
+
+  // 👇 Novo campo para dados dinâmicos do produto (validado externamente)
+  @IsOptional()
+  @IsObject()
+  serviceDetails?: Record<string, any>
 }
