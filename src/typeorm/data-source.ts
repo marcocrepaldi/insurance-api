@@ -10,7 +10,7 @@ export const AppDataSource = new DataSource({
   ssl: { rejectUnauthorized: false }, // 🔒 Necessário para conexões externas
   entities: ['dist/**/*.entity.js'], // Aponta para os arquivos compilados
   migrations: ['dist/typeorm/migrations/*.js'], // Caminho correto das migrations
-  synchronize: false, // ⚠️ Nunca use "true" em produção
+  synchronize: true, // ⚠️ Nunca use "true" em produção
   logging: true, // Ativa logs do banco
 });
 
