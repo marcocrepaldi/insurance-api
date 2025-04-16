@@ -1,17 +1,30 @@
 import { NestFactory } from '@nestjs/core'
 import { AppModule } from './app.module'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
+import { ValidationPipe } from '@nestjs/common'
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule)
 
-  // Prefixo global da API
+  // Definição do prefixo global da API
   app.setGlobalPrefix('api')
 
-  // Libera CORS para o frontend
-  app.enableCors()
+  // CORS (liberado para qualquer origem por padrão — ajuste para produção)
+  app.enableCors({
+    origin: '*',
+    credentials: true,
+  })
 
-  // Configuração Swagger
+  // Pipe global de validação com transformação automática
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+    }),
+  )
+
+  // Swagger (Documentação da API)
   const config = new DocumentBuilder()
     .setTitle('Insurance API')
     .setDescription('Documentação da API de Seguros')
@@ -22,11 +35,20 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config)
   SwaggerModule.setup('api/docs', app, document)
 
-  // Inicia o servidor
-  await app.listen(3000)
+  // Porta da aplicação (usa variável de ambiente ou padrão 3000)
+  const port = parseInt(process.env.PORT || '3000', 10)
+  const isDev = process.env.NODE_ENV !== 'production'
 
-  console.log(`🚀 API rodando em http://localhost:3000/api`)
-  console.log(`📄 Swagger disponível em http://localhost:3000/api/docs`)
+  await app.listen(port, '0.0.0.0')
+
+  // Logs informativos
+  console.log(`🚀 API rodando em http://localhost:${port}/api`)
+  console.log(`📄 Swagger disponível em http://localhost:${port}/api/docs`)
+  console.log(`🌱 Ambiente: ${process.env.NODE_ENV || 'desenvolvimento'}`)
+
+  if (isDev) {
+    console.log(`🛠️ Modo desenvolvimento ativado — logs estendidos`)
+  }
 }
 
 bootstrap()

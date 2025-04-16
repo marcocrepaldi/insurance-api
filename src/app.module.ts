@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule, ConfigService } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
-// ✅ Módulos de funcionalidades
+// ✅ Módulos funcionais
 import { AuthModule } from './auth/auth.module'
 import { UsersModule } from './users/users.module'
 import { RolesModule } from './roles/roles.module'
@@ -12,35 +12,35 @@ import { InsurersModule } from './insurers/insurers.module'
 import { TasksModule } from './tasks/tasks.module'
 import { InsuranceQuoteModule } from './insurance-quote/insurance-quote.module'
 
-// ✅ Módulo raiz
+// ✅ Núcleo da aplicação
 import { AppController } from './app.controller'
 import { AppService } from './app.service'
 
 @Module({
   imports: [
-    // ✅ Carrega variáveis de ambiente (.env) globalmente
+    // 🌍 Carrega variáveis do .env como variáveis globais
     ConfigModule.forRoot({ isGlobal: true }),
 
-    // ✅ Conexão com banco de dados PostgreSQL (Railway ou local)
+    // 🛠️ Configuração assíncrona do TypeORM com PostgreSQL
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => {
-        const databaseUrl = config.get<string>('DATABASE_URL')
-        const isRailway = databaseUrl?.includes('railway')
+        const databaseUrl = config.get<string>('DATABASE_URL') ?? ''
+        const isUsingSSL = databaseUrl.includes('railway')
 
         return {
           type: 'postgres',
           url: databaseUrl,
           autoLoadEntities: true,
-          synchronize: false, // ⚠️ Nunca ativar em produção
+          synchronize: false, // 🚫 Nunca ative isso em produção real
           logging: true,
-          ssl: isRailway ? { rejectUnauthorized: false } : false,
+          ssl: isUsingSSL ? { rejectUnauthorized: false } : undefined,
         }
       },
     }),
 
-    // ✅ Módulos funcionais da aplicação
+    // 🚀 Módulos da aplicação
     AuthModule,
     UsersModule,
     RolesModule,
