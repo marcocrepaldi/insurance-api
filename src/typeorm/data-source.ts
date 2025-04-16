@@ -7,7 +7,7 @@ dotenv.config(); // 🚀 Carrega as variáveis de ambiente do .env
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL, // ✅ Usa a URL completa do Railway
-  ssl: { rejectUnauthorized: false }, // 🔒 Necessário para conexões externas
+  ssl: false,
   entities: ['dist/**/*.entity.js'], // Aponta para os arquivos compilados
   migrations: ['dist/typeorm/migrations/*.js'], // Caminho correto das migrations
   synchronize: true, // ⚠️ Nunca use "true" em produção
