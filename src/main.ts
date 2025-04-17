@@ -9,9 +9,9 @@ async function bootstrap() {
   // Definição do prefixo global da API
   app.setGlobalPrefix('api')
 
-  // CORS (liberado para qualquer origem por padrão — ajuste para produção)
+  // ✅ CORS permitido apenas para o domínio oficial
   app.enableCors({
-    origin: '*',
+    origin: ['https://www.harpersystem.com.br'],
     credentials: true,
   })
 
